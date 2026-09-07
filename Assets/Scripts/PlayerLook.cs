@@ -2,38 +2,71 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PlayerLook : MonoBehaviour
-{   
-    public float mouseSensativity = 50f;
-    public Transform cam;
-    private float xRotation = 0f;
+{
+    [Header("Camera")]
+    [SerializeField] private Transform cam;
+
+    [Header("Sensitivity")]
+    [SerializeField] private float mouseSensitivity = 10f;
+    [SerializeField] private float controllerSensitivity = 100f;
+
+    [Header("Vertical Look")]
+    [SerializeField] private float minLookAngle = -90f;
+    [SerializeField] private float maxLookAngle = 90f;
+
+    [Header("Controller")]
+    [SerializeField] private float controllerDeadzone = 0.1f;
+
     private Vector2 lookInput;
+    private float xRotation;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+    private void Start()
     {
-     Cursor.lockState = CursorLockMode.Locked;
-     Cursor.visible = false;   
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
-       HandleMouseLook(); 
+        HandleLook();
     }
+
     public void OnLook(InputValue value)
     {
         lookInput = value.Get<Vector2>();
     }
-    void HandleMouseLook()
+
+    private void HandleLook()
     {
-        float mouseX = lookInput.x * mouseSensativity * Time.deltaTime;
-        float mouseY = lookInput.y * mouseSensativity * Time.deltaTime;
+        if (lookInput == Vector2.zero)
+            return;
 
-        xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation,-90,90);
+        // Detect whether this is likely controller input.
+        bool controllerInput = lookInput.magnitude <= 1.0f;
 
-        cam.localRotation = Quaternion.Euler(xRotation,0f,0f);
+        float sensitivity = controllerInput
+            ? controllerSensitivity
+            : mouseSensitivity;
 
-        transform.Rotate(Vector3.up * mouseX);
+        float lookX = lookInput.x * sensitivity * Time.deltaTime;
+        float lookY = lookInput.y * sensitivity * Time.deltaTime;
+
+        xRotation -= lookY;
+
+        xRotation = Mathf.Clamp(
+            xRotation,
+            minLookAngle,
+            maxLookAngle
+        );
+
+        cam.localRotation = Quaternion.Euler(
+            xRotation,
+            0f,
+            0f
+        );
+
+        transform.Rotate(
+            Vector3.up * lookX
+        );
     }
 }
