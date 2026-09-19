@@ -50,16 +50,23 @@ public class CharacterSwap : MonoBehaviour
     }
 
     public void Swap()
-    {
-        character = possibleCharacters[whichCharacter];
-        character.GetComponent<PlayerMovement>().enabled = true;
-        for (int i = 0; i < possibleCharacters.Count; i++)
-        {
-            if (possibleCharacters[i] != character)
-            {
-                possibleCharacters[i].GetComponent<PlayerMovement>().enabled = false;
-            }
-        }
+{
+    character = possibleCharacters[whichCharacter];
 
+    for (int i = 0; i < possibleCharacters.Count; i++)
+    {
+        bool isActiveCharacter = possibleCharacters[i] == character;
+
+        // Enable/disable movement
+        possibleCharacters[i].GetComponent<PlayerMovement>().enabled = isActiveCharacter;
+
+        // Enable/disable camera
+        Camera playerCamera = possibleCharacters[i].GetComponentInChildren<Camera>();
+
+        if (playerCamera != null)
+        {
+            playerCamera.enabled = isActiveCharacter;
+        }
     }
+}
 }
