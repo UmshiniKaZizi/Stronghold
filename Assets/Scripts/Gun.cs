@@ -13,8 +13,8 @@ public class Gun : MonoBehaviour
     [SerializeField] private float range = 100f;
     [SerializeField] private int damage = 25;
 
-   [Header("Muzzle Flash")]
-[SerializeField] private ParticleSystem[] muzzleFlashes;
+    [Header("Muzzle Flash")]
+    [SerializeField] private ParticleSystem[] muzzleFlashes;
 
     [Header("Recoil")]
     [SerializeField] private float recoilRotation = 2f;
@@ -25,6 +25,9 @@ public class Gun : MonoBehaviour
     [Header("Camera Recoil")]
     [SerializeField] private PlayerLook playerLook;
     [SerializeField] private float cameraRecoil = 1.5f;
+
+    [Header("Animation")]
+    [SerializeField] private Animator animator;
 
     [Header("Reload Animation")]
     [SerializeField] private Vector3 reloadRotationOffset =
@@ -59,6 +62,11 @@ public class Gun : MonoBehaviour
         {
             playerLook = GetComponentInParent<PlayerLook>();
         }
+
+        if (animator == null)
+        {
+            animator = GetComponentInParent<Animator>();
+        }
     }
 
     private void Update()
@@ -84,28 +92,35 @@ public class Gun : MonoBehaviour
 
         currentAmmo--;
 
-        // Hitscan shooting
+        // Fire the weapon.
         FireRaycast();
 
-        // Weapon recoil
-        ApplyRecoil();
+        // Play fire animation.
+        if (animator != null)
+        {
+            animator.SetTrigger("Fire");
+        }
 
-        // Camera recoil
+        // Weapon recoil.
+       // ApplyRecoil();
+
+        // Camera recoil.
         if (playerLook != null)
         {
             playerLook.AddRecoil(cameraRecoil);
         }
 
-       if (muzzleFlashes != null)
-{
-    foreach (ParticleSystem flash in muzzleFlashes)
-    {
-        if (flash != null)
+        // Muzzle flashes.
+        if (muzzleFlashes != null)
         {
-            flash.Play();
+            foreach (ParticleSystem flash in muzzleFlashes)
+            {
+                if (flash != null)
+                {
+                    flash.Play();
+                }
+            }
         }
-    }
-}
 
         Debug.Log("SHOT FIRED | Ammo: " + currentAmmo);
     }
@@ -202,7 +217,7 @@ public class Gun : MonoBehaviour
 
         float elapsed = 0f;
 
-        // Rotate gun down
+        // Rotate gun down.
         while (elapsed < reloadTime / 2f)
         {
             elapsed += Time.deltaTime;
@@ -218,12 +233,12 @@ public class Gun : MonoBehaviour
             yield return null;
         }
 
-        // Refill magazine
+        // Refill magazine.
         currentAmmo = magSize;
 
         elapsed = 0f;
 
-        // Rotate gun back
+        // Rotate gun back.
         while (elapsed < reloadTime / 2f)
         {
             elapsed += Time.deltaTime;
@@ -239,7 +254,7 @@ public class Gun : MonoBehaviour
             yield return null;
         }
 
-        // Reset gun
+        // Reset gun.
         transform.localRotation = initialRotation;
         transform.localPosition = initialPosition;
 
