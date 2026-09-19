@@ -3,22 +3,26 @@ using UnityEngine.InputSystem;
 
 public class PlayerLook : MonoBehaviour
 {
-    [Header("Camera")]
+    [Header("References")]
     [SerializeField] private Transform cam;
 
-    [Header("Sensitivity")]
-    [SerializeField] private float mouseSensitivity = 10f;
-    [SerializeField] private float controllerSensitivity = 100f;
-
-    [Header("Vertical Look")]
-    [SerializeField] private float minLookAngle = -90f;
-    [SerializeField] private float maxLookAngle = 90f;
+    [Header("Mouse")]
+    [SerializeField] private float mouseSensitivity = 50f;
 
     [Header("Controller")]
-    [SerializeField] private float controllerDeadzone = 0.1f;
+    [SerializeField] private float controllerSensitivity = 2f;
+
+    [Header("Recoil")]
+    [SerializeField] private float recoilSnappiness = 15f;
+    [SerializeField] private float recoilReturnSpeed = 10f;
 
     private Vector2 lookInput;
+
     private float xRotation;
+
+    // Current and target camera recoil
+    private float currentRecoil;
+    private float targetRecoil;
 
     private void Start()
     {
@@ -29,6 +33,7 @@ public class PlayerLook : MonoBehaviour
     private void Update()
     {
         HandleLook();
+        HandleRecoil();
     }
 
     public void OnLook(InputValue value)
@@ -38,35 +43,71 @@ public class PlayerLook : MonoBehaviour
 
     private void HandleLook()
     {
-        if (lookInput == Vector2.zero)
-            return;
+        float sensitivity;
 
-        // Detect whether this is likely controller input.
-        bool controllerInput = lookInput.magnitude <= 1.0f;
-
-        float sensitivity = controllerInput
-            ? controllerSensitivity
-            : mouseSensitivity;
+        if (Gamepad.current != null &&
+            Gamepad.current.rightStick.ReadValue().sqrMagnitude > 0.01f)
+        {
+            sensitivity = controllerSensitivity;
+        }
+        else
+        {
+            sensitivity = mouseSensitivity;
+        }
 
         float lookX = lookInput.x * sensitivity * Time.deltaTime;
         float lookY = lookInput.y * sensitivity * Time.deltaTime;
 
+        // Normal player look
         xRotation -= lookY;
 
+        // Clamp normal camera rotation
         xRotation = Mathf.Clamp(
             xRotation,
-            minLookAngle,
-            maxLookAngle
+            -90f,
+            90f
         );
 
+        // Apply look + recoil
         cam.localRotation = Quaternion.Euler(
-            xRotation,
+            xRotation - currentRecoil,
             0f,
             0f
         );
 
+        // Horizontal rotation stays on player
         transform.Rotate(
             Vector3.up * lookX
+        );
+    }
+
+    public void AddRecoil(float amount)
+    {
+        // Add recoil to the target
+        targetRecoil += amount;
+
+        // Prevent recoil from becoming excessive
+        targetRecoil = Mathf.Clamp(
+            targetRecoil,
+            0f,
+            5f
+        );
+    }
+
+    private void HandleRecoil()
+    {
+        // Move camera toward recoil target
+        currentRecoil = Mathf.Lerp(
+            currentRecoil,
+            targetRecoil,
+            recoilSnappiness * Time.deltaTime
+        );
+
+        // Return recoil target toward zero
+        targetRecoil = Mathf.Lerp(
+            targetRecoil,
+            0f,
+            recoilReturnSpeed * Time.deltaTime
         );
     }
 }

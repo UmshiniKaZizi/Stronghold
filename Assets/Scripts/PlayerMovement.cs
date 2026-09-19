@@ -31,6 +31,13 @@ public class PlayerMovement : MonoBehaviour
     public bool CanMove => canMove;
     public bool CanJump => canJump;
 
+    void Start()
+    {
+        rb = GetComponent<Rigidbody>();
+        
+        rb.freezeRotation = true; // this doesn't prevent you from looking around but it does stop the rotation
+    }
+
     private void Awake()
     {
         // Automatically find Rigidbody if one wasn't assigned.
