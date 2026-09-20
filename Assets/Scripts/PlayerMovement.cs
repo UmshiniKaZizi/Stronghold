@@ -43,6 +43,9 @@ public class PlayerMovement : MonoBehaviour
         // Automatically find Rigidbody if one wasn't assigned.
         if (rb == null)
             rb = GetComponent<Rigidbody>();
+
+        //UNA
+        rb.freezeRotation = true;
     }
 
     private void Update()
