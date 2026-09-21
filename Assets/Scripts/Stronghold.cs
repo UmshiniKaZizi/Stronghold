@@ -17,14 +17,14 @@ public class Stronghold : MonoBehaviour
     private void Start()
     {
         currentForceField = maxForceField;
-    }
 
-    private void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            DamageForceField(forceFieldDamage);
-        }
+        Debug.Log(
+            gameObject.name +
+            " INITIAL FORCE FIELD: " +
+            currentForceField +
+            "/" +
+            maxForceField
+        );
     }
 
     public void DamageForceField(float damage)
@@ -33,11 +33,15 @@ public class Stronghold : MonoBehaviour
             return;
 
         currentForceField -= damage;
-        currentForceField = Mathf.Max(currentForceField, 0f);
+        currentForceField = Mathf.Max(
+            currentForceField,
+            0f
+        );
 
         Debug.Log(
+            "FORCE FIELD DAMAGE | " +
             gameObject.name +
-            " Force Field: " +
+            " | " +
             currentForceField +
             "/" +
             maxForceField
@@ -49,8 +53,34 @@ public class Stronghold : MonoBehaviour
         }
     }
 
+    public void RestoreForceField(float amount)
+    {
+        float oldForceField = currentForceField;
+
+        currentForceField += amount;
+
+        currentForceField = Mathf.Min(
+            currentForceField,
+            maxForceField
+        );
+
+        Debug.Log(
+            "FORCE FIELD RESTORED | " +
+            gameObject.name +
+            " | " +
+            oldForceField +
+            " → " +
+            currentForceField +
+            "/" +
+            maxForceField
+        );
+    }
+
     private void OnForceFieldBreached()
     {
-        Debug.Log(gameObject.name + " FORCE FIELD BREACHED!");
+        Debug.Log(
+            "FORCE FIELD BREACHED | " +
+            gameObject.name
+        );
     }
 }

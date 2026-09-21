@@ -1,9 +1,9 @@
 using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
 
 public class CharacterSwap : MonoBehaviour
 {
+    [Header("Current Character")]
     public Transform character;
 
     [Header("Characters")]
@@ -13,97 +13,236 @@ public class CharacterSwap : MonoBehaviour
     [Tooltip("Add the indexes of characters that cannot move.")]
     [SerializeField] private List<int> stationaryCharacters;
 
-    [Header("Current Character")]
+    [Header("Current Character Index")]
     [SerializeField] private int whichCharacter = 0;
 
     [Header("UI")]
     [SerializeField] private CharacterWheelUI characterWheelUI;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
+
+    // ==========================================
+    // START
+    // ==========================================
+
+    private void Start()
     {
-        if (possibleCharacters == null || possibleCharacters.Count == 0)
+        if (possibleCharacters == null ||
+            possibleCharacters.Count == 0)
         {
-            Debug.LogWarning("No characters have been assigned.");
+            Debug.LogWarning(
+                "No characters have been assigned."
+            );
+
             return;
         }
 
-        // Start with the first character.
-        whichCharacter = 0;
+        // Start with first living character
+        whichCharacter = FindNextAliveCharacter(
+            0,
+            1
+        );
 
-        //if (character == null && possibleCharacters.Count >= 1)
-        //{
-        //    character = possibleCharacters[0];
-        //}
+        if (whichCharacter == -1)
+        {
+            Debug.LogWarning(
+                "All characters are dead."
+            );
+
+            return;
+        }
+
         Swap();
     }
 
-    // Update is called once per frame
-    void Update()
+
+    // ==========================================
+    // UPDATE
+    // ==========================================
+
+    private void Update()
     {
-        //Previous character
-        if(Input.GetKeyDown(KeyCode.Q))
+        // Previous character
+        if (Input.GetKeyDown(KeyCode.Q))
         {
-            whichCharacter--;
+            int nextCharacter =
+                FindNextAliveCharacter(
+                    whichCharacter - 1,
+                    -1
+                );
 
-            if (whichCharacter < 0)
+            if (nextCharacter != -1)
             {
-                whichCharacter = possibleCharacters.Count - 1;
-            }
+                whichCharacter = nextCharacter;
 
-            Swap();
-           // if (whichCharacter == 0)
-           // {
-           //     whichCharacter = possibleCharacters.Count - 1;
-           // }
-           // else
-           // {
-                //whichCharacter -= 1;
-            //    whichCharacter --;
-            //}
-            //Swap();
+                Swap();
+            }
+            else
+            {
+                Debug.Log(
+                    "No living character available."
+                );
+            }
         }
-        
-        //Next Character
+
+
+        // Next character
         if (Input.GetKeyDown(KeyCode.E))
         {
-            whichCharacter++;
+            int nextCharacter =
+                FindNextAliveCharacter(
+                    whichCharacter + 1,
+                    1
+                );
 
-            if (whichCharacter >= possibleCharacters.Count)
+            if (nextCharacter != -1)
             {
-                whichCharacter = 0;
+                whichCharacter = nextCharacter;
+
+                Swap();
+            }
+            else
+            {
+                Debug.Log(
+                    "No living character available."
+                );
+            }
+        }
+    }
+
+
+    // ==========================================
+    // FIND NEXT ALIVE CHARACTER
+    // ==========================================
+
+    private int FindNextAliveCharacter(
+        int startIndex,
+        int direction)
+    {
+        int characterCount =
+            possibleCharacters.Count;
+
+        for (int i = 0;
+             i < characterCount;
+             i++)
+        {
+            int index =
+                (startIndex +
+                 direction * i) %
+                characterCount;
+
+            // Handle negative indexes
+            if (index < 0)
+            {
+                index += characterCount;
             }
 
-            Swap();
+            Transform currentCharacter =
+                possibleCharacters[index];
 
-           // if (whichCharacter == possibleCharacters.Count -1)
-           // {
-           //     whichCharacter = 0;
-         //   }
-          //  else
-          //  {
-                //whichCharacter += 1;
-            //    whichCharacter++;
-           // }
-            //Swap();
+            if (currentCharacter == null)
+                continue;
+
+            PlayerHealth health =
+                currentCharacter.GetComponent<PlayerHealth>();
+
+            // Character is alive
+            if (health == null ||
+                !health.IsDead)
+            {
+                return index;
+            }
         }
-        
+
+        // No living characters found
+        return -1;
     }
+
+
+    // ==========================================
+    // SWAP CHARACTER
+    // ==========================================
 
     public void Swap()
     {
-      character = possibleCharacters[whichCharacter];
+        if (possibleCharacters == null ||
+            possibleCharacters.Count == 0)
+        {
+            return;
+        }
 
-      for (int i = 0; i < possibleCharacters.Count; i++)
-      {
-           Transform currentCharacter = possibleCharacters[i];
-           bool isActiveCharacter =
+
+        // Set current character
+        character =
+            possibleCharacters[whichCharacter];
+
+
+        // Check if selected character is dead
+        PlayerHealth selectedHealth =
+            character.GetComponent<PlayerHealth>();
+
+        if (selectedHealth != null &&
+            selectedHealth.IsDead)
+        {
+            Debug.Log(
+                character.name +
+                " is DEAD and cannot be selected."
+            );
+
+            // Find another living character
+            int nextCharacter =
+                FindNextAliveCharacter(
+                    whichCharacter + 1,
+                    1
+                );
+
+            if (nextCharacter == -1)
+            {
+                Debug.Log(
+                    "ALL CHARACTERS ARE DEAD."
+                );
+
+                return;
+            }
+
+            whichCharacter = nextCharacter;
+
+            character =
+                possibleCharacters[whichCharacter];
+        }
+
+
+        // Loop through all characters
+        for (int i = 0;
+             i < possibleCharacters.Count;
+             i++)
+        {
+            Transform currentCharacter =
+                possibleCharacters[i];
+
+            if (currentCharacter == null)
+                continue;
+
+
+            bool isActiveCharacter =
                 currentCharacter == character;
-           // stationaryCharacters.Contains(i);
-           // possibleCharacters[i] == character;
-           
-           PlayerMovement movement =
-           currentCharacter.GetComponent<PlayerMovement>();
+
+
+            // Check character health
+            PlayerHealth health =
+                currentCharacter.GetComponent<PlayerHealth>();
+
+            bool isDead =
+                health != null &&
+                health.IsDead;
+
+
+            // ==========================================
+            // MOVEMENT
+            // ==========================================
+
+            PlayerMovement movement =
+                currentCharacter
+                .GetComponent<PlayerMovement>();
 
             if (movement != null)
             {
@@ -111,47 +250,85 @@ public class CharacterSwap : MonoBehaviour
                     stationaryCharacters.Contains(i);
 
                 bool canMove =
-                   isActiveCharacter && !isStationary;
+                    isActiveCharacter &&
+                    !isStationary &&
+                    !isDead;
 
-                // Character can only move if:
-                // 1. They are currently selected
-                // 2. They are NOT stationary
-                movement.SetMovementEnabled(canMove);
-
-              //  movement.enabled = isActiveCharacter && !isStationary;
+                movement.SetMovementEnabled(
+                    canMove
+                );
             }
 
+
             // ==========================================
-            // LOOK / CAMERA CONTROL
+            // PLAYER LOOK
             // ==========================================
 
             PlayerLook look =
-                currentCharacter.GetComponent<PlayerLook>();
+                currentCharacter
+                .GetComponent<PlayerLook>();
 
             if (look != null)
             {
-                look.enabled = isActiveCharacter;
+                look.enabled =
+                    isActiveCharacter &&
+                    !isDead;
             }
 
 
+            // ==========================================
+            // CAMERA
+            // ==========================================
 
-            // Enable/disable movement
-          //  possibleCharacters[i].GetComponent<PlayerMovement>().enabled = isActiveCharacter;
-
-        // Enable/disable camera
-        Camera playerCamera = 
-                //possibleCharacters[i].GetComponentInChildren<Camera>();
-            currentCharacter.GetComponentInChildren<Camera>();
+            Camera playerCamera =
+                currentCharacter
+                .GetComponentInChildren<Camera>();
 
             if (playerCamera != null)
             {
-               playerCamera.enabled = isActiveCharacter;
+                playerCamera.enabled =
+                    isActiveCharacter &&
+                    !isDead;
             }
 
-            if (characterWheelUI != null)
+
+            // ==========================================
+            // SHOOTING
+            // ==========================================
+
+            PlayerShooting shooting =
+                currentCharacter
+                .GetComponent<PlayerShooting>();
+
+            if (shooting != null)
             {
-                characterWheelUI.UpdateCharacterSelection(whichCharacter);
+                shooting.SetControlled(
+                    isActiveCharacter &&
+                    !isDead
+                );
             }
         }
+
+
+        // ==========================================
+        // CHARACTER UI
+        // ==========================================
+
+        if (characterWheelUI != null)
+        {
+            characterWheelUI.UpdateCharacterSelection(
+                whichCharacter
+            );
+        }
+
+
+        // ==========================================
+        // DEBUG
+        // ==========================================
+
+        Debug.Log(
+            "Active Character: " +
+            character.name
+        );
     }
 }

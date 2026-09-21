@@ -1,68 +1,67 @@
-
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PlayerShooting : MonoBehaviour
 {
-    [Header("References")]
-    public Gun gun;
+    [Header("Gun")]
+    [SerializeField] private Gun gun;
 
-    private bool isHoldingShoot = false;
+    private bool isControlled;
 
-    // ============================================================
-    // SHOOT INPUT
-    // ============================================================
+    private void Awake()
+    {
+        if (gun == null)
+        {
+            gun = GetComponentInChildren<Gun>();
+        }
+
+        if (gun == null)
+        {
+            Debug.LogWarning(
+                gameObject.name + " has no Gun assigned!"
+            );
+        }
+    }
 
     public void OnShoot(InputValue value)
     {
-        if (value.isPressed)
-        {
-            isHoldingShoot = true;
+        if (!isControlled)
+            return;
 
-            Debug.Log("SHOOT STARTED");
+        // Only shoot when the button is initially pressed
+        if (value.isPressed && gun != null)
+        {
+            gun.Shoot();
+
+            Debug.Log(
+                gameObject.name + " SHOOT"
+            );
         }
     }
-
-    // ============================================================
-    // SHOOT RELEASE
-    // ============================================================
-
-    public void OnShootRelease(InputValue value)
-    {
-        if (!value.isPressed)
-        {
-            isHoldingShoot = false;
-
-            Debug.Log("SHOOT RELEASED");
-        }
-    }
-
-    // ============================================================
-    // RELOAD INPUT
-    // ============================================================
 
     public void OnReload(InputValue value)
     {
-        if (!value.isPressed)
+        if (!isControlled)
             return;
 
-        Debug.Log("RELOAD INPUT RECEIVED");
-
-        if (gun != null)
+        if (value.isPressed && gun != null)
         {
+            Debug.Log(
+                gameObject.name + " RELOAD"
+            );
+
             gun.TryReload();
         }
     }
 
-    // ============================================================
-    // SHOOTING
-    // ============================================================
-
-    private void Update()
+    public void SetControlled(bool controlled)
     {
-        if (isHoldingShoot && gun != null)
-        {
-            gun.Shoot();
-        }
+        isControlled = controlled;
+
+        Debug.Log(
+            gameObject.name +
+            " SHOOTING CONTROL = " +
+            controlled
+        );
     }
 }

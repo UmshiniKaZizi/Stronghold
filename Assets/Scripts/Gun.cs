@@ -33,6 +33,16 @@ public class Gun : MonoBehaviour
     [SerializeField] private Vector3 reloadRotationOffset =
         new Vector3(66f, 50f, 50f);
 
+    [Header("Bullet Decal")]
+    [SerializeField] private GameObject bulletDecalPrefab;
+    [SerializeField] private float decalOffset = 0.01f;
+    [SerializeField] private float decalLifetime = 5f;
+
+    [Header("Bullet Trace")]
+    [SerializeField] private LineRenderer bulletTracer;
+    [SerializeField] private Transform bulletTraceOrigin;
+    [SerializeField] private float tracerDuration = 0.05f;
+
     private int currentAmmo;
     private bool isReloading;
     private float nextTimeToFire;
@@ -67,6 +77,12 @@ public class Gun : MonoBehaviour
         {
             animator = GetComponentInParent<Animator>();
         }
+
+        // Hide tracer when game starts
+        if (bulletTracer != null)
+        {
+            bulletTracer.enabled = false;
+        }
     }
 
     private void Update()
@@ -92,25 +108,24 @@ public class Gun : MonoBehaviour
 
         currentAmmo--;
 
-        // Fire the weapon.
         FireRaycast();
 
-        // Play fire animation.
+        // Fire animation
         if (animator != null)
         {
             animator.SetTrigger("Fire");
         }
 
-        // Weapon recoil.
-       // ApplyRecoil();
+        // Weapon recoil currently disabled
+        // ApplyRecoil();
 
-        // Camera recoil.
+        // Camera recoil
         if (playerLook != null)
         {
             playerLook.AddRecoil(cameraRecoil);
         }
 
-        // Muzzle flashes.
+        // Play all muzzle flashes
         if (muzzleFlashes != null)
         {
             foreach (ParticleSystem flash in muzzleFlashes)
@@ -122,76 +137,202 @@ public class Gun : MonoBehaviour
             }
         }
 
-        Debug.Log("SHOT FIRED | Ammo: " + currentAmmo);
+        /*Debug.Log(
+            "SHOT FIRED | Ammo: " +
+            currentAmmo
+        );*/
     }
 
     private void FireRaycast()
     {
         if (playerCamera == null)
         {
-            Debug.LogWarning("Player Camera is not assigned!");
+            Debug.LogWarning(
+                "Player Camera is not assigned!"
+            );
+
             return;
         }
 
+        // Create the actual aiming ray from the
+        // center of the player's camera.
         Ray ray = playerCamera.ViewportPointToRay(
             new Vector3(0.5f, 0.5f, 0f)
         );
 
-        if (Physics.Raycast(ray, out RaycastHit hit, range))
+        // Default endpoint if nothing is hit.
+        Vector3 traceEnd =
+            ray.origin +
+            ray.direction * range;
+
+        // Check what the player is aiming at.
+        if (Physics.Raycast(
+            ray,
+            out RaycastHit hit,
+            range))
         {
-            Debug.Log(
+            traceEnd = hit.point;
+
+            /*Debug.Log(
                 "HIT: " +
                 hit.collider.gameObject.name +
                 " | Distance: " +
                 hit.distance
-            );
+            );*/
 
-            hit.collider.SendMessage(
-                "TakeDamage",
-                damage,
-                SendMessageOptions.DontRequireReceiver
-            );
+            // Enemy damage
+            EnemyHealth enemyHealth =
+                hit.collider.GetComponentInParent<EnemyHealth>();
+
+            if (enemyHealth != null)
+            {
+                enemyHealth.TakeDamage(damage);
+            }
+
+            // Bullet decal
+            SpawnBulletDecal(hit);
         }
         else
         {
-            Debug.Log("SHOT MISSED");
+           // Debug.Log("SHOT MISSED");
         }
+
+        // ---------------------------------
+        // BULLET TRACE
+        // ---------------------------------
+
+        Vector3 traceStart;
+
+        if (bulletTraceOrigin != null)
+        {
+            traceStart = bulletTraceOrigin.position;
+        }
+        else
+        {
+            traceStart = transform.position;
+        }
+
+        if (bulletTracer != null)
+        {
+            StartCoroutine(
+                ShowBulletTracer(
+                    traceStart,
+                    traceEnd
+                )
+            );
+        }
+    }
+
+    private IEnumerator ShowBulletTracer(
+        Vector3 start,
+        Vector3 end)
+    {
+        if (bulletTracer == null)
+            yield break;
+
+        bulletTracer.enabled = true;
+
+        bulletTracer.SetPosition(
+            0,
+            start
+        );
+
+        bulletTracer.SetPosition(
+            1,
+            end
+        );
+
+        yield return new WaitForSeconds(
+            tracerDuration
+        );
+
+        bulletTracer.enabled = false;
+    }
+
+    private void SpawnBulletDecal(RaycastHit hit)
+    {
+        if (bulletDecalPrefab == null)
+        {
+            Debug.LogWarning(
+                "Bullet Decal Prefab is not assigned!"
+            );
+
+            return;
+        }
+
+        Vector3 position =
+            hit.point +
+            hit.normal * decalOffset;
+
+        Quaternion rotation =
+            Quaternion.LookRotation(hit.normal);
+
+        GameObject decal = Instantiate(
+            bulletDecalPrefab,
+            position,
+            rotation
+        );
+
+        decal.transform.SetParent(
+            hit.collider.transform
+        );
+
+        Destroy(
+            decal,
+            decalLifetime
+        );
     }
 
     private void ApplyRecoil()
     {
         recoilTargetRotation *=
-            Quaternion.Euler(-recoilRotation, 0f, 0f);
+            Quaternion.Euler(
+                -recoilRotation,
+                0f,
+                0f
+            );
 
         recoilTargetPosition +=
-            new Vector3(0f, 0f, -recoilKickback);
+            new Vector3(
+                0f,
+                0f,
+                -recoilKickback
+            );
     }
 
     private void HandleRecoil()
     {
-        transform.localRotation = Quaternion.Slerp(
-            transform.localRotation,
-            recoilTargetRotation,
-            recoilSnappiness * Time.deltaTime
-        );
+        transform.localRotation =
+            Quaternion.Slerp(
+                transform.localRotation,
+                recoilTargetRotation,
+                recoilSnappiness *
+                Time.deltaTime
+            );
 
-        transform.localPosition = Vector3.Lerp(
-            transform.localPosition,
-            recoilTargetPosition,
-            recoilSnappiness * Time.deltaTime
-        );
+        transform.localPosition =
+            Vector3.Lerp(
+                transform.localPosition,
+                recoilTargetPosition,
+                recoilSnappiness *
+                Time.deltaTime
+            );
 
-        recoilTargetRotation = Quaternion.Slerp(
-            recoilTargetRotation,
-            initialRotation,
-            recoilReturnSpeed * Time.deltaTime
-        );
+        recoilTargetRotation =
+            Quaternion.Slerp(
+                recoilTargetRotation,
+                initialRotation,
+                recoilReturnSpeed *
+                Time.deltaTime
+            );
 
-        recoilTargetPosition = Vector3.Lerp(
-            recoilTargetPosition,
-            initialPosition,
-            recoilReturnSpeed * Time.deltaTime
-        );
+        recoilTargetPosition =
+            Vector3.Lerp(
+                recoilTargetPosition,
+                initialPosition,
+                recoilReturnSpeed *
+                Time.deltaTime
+            );
     }
 
     public void TryReload()
@@ -213,58 +354,72 @@ public class Gun : MonoBehaviour
 
         Quaternion targetRotation =
             initialRotation *
-            Quaternion.Euler(reloadRotationOffset);
+            Quaternion.Euler(
+                reloadRotationOffset
+            );
 
         float elapsed = 0f;
 
-        // Rotate gun down.
+        // Rotate weapon down
         while (elapsed < reloadTime / 2f)
         {
             elapsed += Time.deltaTime;
 
-            float t = elapsed / (reloadTime / 2f);
+            float t =
+                elapsed /
+                (reloadTime / 2f);
 
-            transform.localRotation = Quaternion.Slerp(
-                initialRotation,
-                targetRotation,
-                t
-            );
+            transform.localRotation =
+                Quaternion.Slerp(
+                    initialRotation,
+                    targetRotation,
+                    t
+                );
 
             yield return null;
         }
 
-        // Refill magazine.
+        // Refill magazine
         currentAmmo = magSize;
 
         elapsed = 0f;
 
-        // Rotate gun back.
+        // Rotate weapon back
         while (elapsed < reloadTime / 2f)
         {
             elapsed += Time.deltaTime;
 
-            float t = elapsed / (reloadTime / 2f);
+            float t =
+                elapsed /
+                (reloadTime / 2f);
 
-            transform.localRotation = Quaternion.Slerp(
-                targetRotation,
-                initialRotation,
-                t
-            );
+            transform.localRotation =
+                Quaternion.Slerp(
+                    targetRotation,
+                    initialRotation,
+                    t
+                );
 
             yield return null;
         }
 
-        // Reset gun.
-        transform.localRotation = initialRotation;
-        transform.localPosition = initialPosition;
+        transform.localRotation =
+            initialRotation;
 
-        recoilTargetRotation = initialRotation;
-        recoilTargetPosition = initialPosition;
+        transform.localPosition =
+            initialPosition;
+
+        recoilTargetRotation =
+            initialRotation;
+
+        recoilTargetPosition =
+            initialPosition;
 
         isReloading = false;
 
-        Debug.Log(
-            "RELOAD COMPLETE | Ammo: " + currentAmmo
-        );
+        /*Debug.Log(
+            "RELOAD COMPLETE | Ammo: " +
+            currentAmmo
+        );*/
     }
 }

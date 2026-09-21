@@ -18,18 +18,56 @@ public class EnemyAttack : MonoBehaviour
 
         attackTimer -= Time.deltaTime;
 
-        if (attackTimer <= 0f)
+        if (!targetStronghold.IsBreached)
         {
-            Attack();
-            attackTimer = attackInterval;
+            AttackForceField();
+        }
+        else
+        {
+            // Character targeting will happen here later.
+            // For now, the enemy stops attacking the force field.
         }
     }
 
-    private void Attack()
+    private void AttackForceField()
     {
-        if (targetStronghold.IsBreached)
+        if (attackTimer > 0f)
             return;
 
-        targetStronghold.DamageForceField(attackDamage);
+        Debug.Log(
+            "ENEMY ATTACK | " +
+            gameObject.name +
+            " → " +
+            targetStronghold.name
+        );
+
+        targetStronghold.DamageForceField(
+            attackDamage
+        );
+
+        attackTimer = attackInterval;
+    }
+
+    public void SetTargetStronghold(
+        Stronghold stronghold)
+    {
+        targetStronghold = stronghold;
+
+        if (targetStronghold == null)
+        {
+            Debug.LogWarning(
+                gameObject.name +
+                ": Target Stronghold is NULL!"
+            );
+
+            return;
+        }
+
+        Debug.Log(
+            "TARGET ASSIGNED | " +
+            gameObject.name +
+            " → " +
+            targetStronghold.name
+        );
     }
 }
