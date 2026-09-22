@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.AI;
+using System.Collections.Generic;
 
 public class EnemyMovement : MonoBehaviour
 {
@@ -12,12 +13,7 @@ public class EnemyMovement : MonoBehaviour
     [Header("Movement")]
     [SerializeField] private float stoppingDistance = 1.5f;
 
-    [Header("Player Targeting")]
-    [SerializeField] private float targetRefreshTime = 2f;
-
     private NavMeshAgent agent;
-
-    private float targetTimer;
 
     private void Awake()
     {
@@ -26,8 +22,7 @@ public class EnemyMovement : MonoBehaviour
 
     private void Start()
     {
-        agent.stoppingDistance =
-            stoppingDistance;
+        agent.stoppingDistance = stoppingDistance;
     }
 
     private void Update()
@@ -35,15 +30,22 @@ public class EnemyMovement : MonoBehaviour
         if (targetStronghold == null)
             return;
 
-        if (targetStronghold.IsBreached)
-        {
-            ChaseLivingCharacter();
-        }
-        else
+        // Stronghold has not been breached
+        if (!targetStronghold.IsBreached)
         {
             MoveToStronghold();
         }
+        // Stronghold has been breached
+        else
+        {
+            ChaseLivingCharacter();
+        }
     }
+
+
+    // ==========================================
+    // MOVE TO STRONGHOLD
+    // ==========================================
 
     private void MoveToStronghold()
     {
@@ -51,30 +53,33 @@ public class EnemyMovement : MonoBehaviour
             return;
 
         agent.isStopped = false;
-        agent.stoppingDistance =
-            stoppingDistance;
+        agent.stoppingDistance = stoppingDistance;
 
-        agent.SetDestination(
-            target.position
-        );
+        agent.SetDestination(target.position);
     }
+
+
+    // ==========================================
+    // CHASE CHARACTER
+    // ==========================================
 
     private void ChaseLivingCharacter()
     {
-        targetTimer -= Time.deltaTime;
-
-        // Find a new character if we don't have one
-        // or our current target has died.
-        if (target == null ||
-            !target.gameObject.activeInHierarchy ||
-            IsTargetDead() ||
-            targetTimer <= 0f)
+        // If we already have a valid target,
+        // KEEP FOLLOWING THAT CHARACTER.
+        if (HasValidTarget())
         {
-            FindLivingCharacter();
+            agent.isStopped = false;
+            agent.stoppingDistance = stoppingDistance;
 
-            targetTimer =
-                targetRefreshTime;
+            agent.SetDestination(target.position);
+
+            return;
         }
+
+        // Current target is dead/unavailable,
+        // so find a new living character.
+        FindLivingCharacter();
 
         if (target == null)
         {
@@ -83,17 +88,23 @@ public class EnemyMovement : MonoBehaviour
         }
 
         agent.isStopped = false;
-        agent.stoppingDistance = 1.5f;
+        agent.stoppingDistance = stoppingDistance;
 
-        agent.SetDestination(
-            target.position
-        );
+        agent.SetDestination(target.position);
     }
 
-    private bool IsTargetDead()
+
+    // ==========================================
+    // CHECK CURRENT TARGET
+    // ==========================================
+
+    private bool HasValidTarget()
     {
         if (target == null)
-            return true;
+            return false;
+
+        if (!target.gameObject.activeSelf)
+            return false;
 
         PlayerHealth health =
             target.GetComponent<PlayerHealth>();
@@ -101,21 +112,28 @@ public class EnemyMovement : MonoBehaviour
         if (health == null)
             return false;
 
-        return health.IsDead;
+        if (health.IsDead)
+            return false;
+
+        return true;
     }
+
+
+    // ==========================================
+    // FIND LIVING CHARACTER
+    // ==========================================
 
     private void FindLivingCharacter()
     {
         GameObject[] players =
             GameObject.FindGameObjectsWithTag("Player");
 
-        System.Collections.Generic.List<Transform>
-            livingCharacters =
-            new System.Collections.Generic.List<Transform>();
+        List<Transform> livingCharacters =
+            new List<Transform>();
 
         foreach (GameObject player in players)
         {
-            if (!player.activeInHierarchy)
+            if (!player.activeSelf)
                 continue;
 
             PlayerHealth health =
@@ -135,24 +153,47 @@ public class EnemyMovement : MonoBehaviour
         if (livingCharacters.Count == 0)
         {
             target = null;
+
+            Debug.Log(
+                gameObject.name +
+                " could not find a living character."
+            );
+
             return;
         }
 
-        int randomIndex =
-            Random.Range(
-                0,
-                livingCharacters.Count
-            );
+        // Find the closest living character
+        Transform closestCharacter = null;
+        float closestDistance = Mathf.Infinity;
 
-        target =
-            livingCharacters[randomIndex];
+        foreach (Transform character in livingCharacters)
+        {
+            float distance =
+                Vector3.Distance(
+                    transform.position,
+                    character.position
+                );
+
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestCharacter = character;
+            }
+        }
+
+        target = closestCharacter;
 
         Debug.Log(
             gameObject.name +
-            " is targeting " +
+            " is now targeting " +
             target.name
         );
     }
+
+
+    // ==========================================
+    // SET STRONGHOLD TARGET
+    // ==========================================
 
     public void SetTarget(Stronghold stronghold)
     {
@@ -169,9 +210,7 @@ public class EnemyMovement : MonoBehaviour
         }
 
         Transform enemyTarget =
-            stronghold.transform.Find(
-                "EnemyTarget"
-            );
+            stronghold.transform.Find("EnemyTarget");
 
         if (enemyTarget != null)
         {
