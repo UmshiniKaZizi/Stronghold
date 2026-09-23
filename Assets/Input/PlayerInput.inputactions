@@ -59,6 +59,24 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "PreviousCharacter",
+                    "type": "Button",
+                    "id": "1b646ed1-cb26-446a-9eb2-79616c417399",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "NextCharacter",
+                    "type": "Button",
+                    "id": "7946fd58-70d8-415e-af2e-e8b676d15856",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -229,6 +247,17 @@
                 },
                 {
                     "name": "",
+                    "id": "70513c4f-3c50-44d2-aef9-b8db50e5b670",
+                    "path": "<Gamepad>/rightTrigger",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Shoot",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
                     "id": "1b26df5f-2246-4603-81d3-aba6c707b836",
                     "path": "<Mouse>/leftButton",
                     "interactions": "Press(behavior=1)",
@@ -241,7 +270,7 @@
                 {
                     "name": "",
                     "id": "6e535e42-fd60-4b02-9300-3f3c8e36b9c5",
-                    "path": "",
+                    "path": "<Gamepad>/rightTrigger",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
@@ -263,11 +292,55 @@
                 {
                     "name": "",
                     "id": "dd2ada02-ba1e-4af2-b1de-0eea077c4a7e",
-                    "path": "",
+                    "path": "<Gamepad>/buttonWest",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
                     "action": "Reload",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "d9037362-7712-46b2-9536-6e3a43399dee",
+                    "path": "<Keyboard>/q",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "PreviousCharacter",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2fd9e3e5-40de-4713-a0bb-7414a0323c8b",
+                    "path": "<Gamepad>/dpad/left",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "PreviousCharacter",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "502033a4-51de-4da8-b0a4-560b54df6872",
+                    "path": "<Keyboard>/e",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "NextCharacter",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "b8eb9066-aed0-45ac-90b4-5826f32f86bc",
+                    "path": "<Gamepad>/dpad/right",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "NextCharacter",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

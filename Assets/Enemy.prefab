@@ -134,6 +134,9 @@ MonoBehaviour:
   attackDamage: 10
   attackInterval: 1
   attackRange: 8
+  lungeDistance: 6
+  lungeSpeed: 25
+  returnSpeed: 18
 --- !u!114 &1581684572024917236
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -158,7 +161,7 @@ NavMeshAgent:
   m_GameObject: {fileID: 1222066633652356276}
   m_Enabled: 1
   m_AgentTypeID: 0
-  m_Radius: 0.5
+  m_Radius: 2
   m_Speed: 10
   m_Acceleration: 25
   avoidancePriority: 50
