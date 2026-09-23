@@ -8,7 +8,7 @@ public class EnemyAttack : MonoBehaviour
     [Header("Attack Settings")]
     [SerializeField] private float attackDamage = 10f;
     [SerializeField] private float attackInterval = 1f;
-    [SerializeField] private float attackRange = 2f;
+    [SerializeField] private float attackRange = 8f;
 
     private float attackTimer;
 
@@ -16,8 +16,7 @@ public class EnemyAttack : MonoBehaviour
 
     private void Awake()
     {
-        enemyMovement =
-            GetComponent<EnemyMovement>();
+        enemyMovement = GetComponent<EnemyMovement>();
 
         if (enemyMovement == null)
         {
@@ -54,7 +53,7 @@ public class EnemyAttack : MonoBehaviour
 
 
     // ==========================================
-    // ATTACK FORCE FIELD
+    // FORCE FIELD ATTACK
     // ==========================================
 
     private void AttackForceField()
@@ -68,29 +67,21 @@ public class EnemyAttack : MonoBehaviour
         if (enemyMovement == null)
             return;
 
-        Transform enemyTarget =
+        Transform target =
             enemyMovement.CurrentTarget;
 
-        if (enemyTarget == null)
+        if (target == null)
             return;
-
-        // ==========================================
-        // CHECK DISTANCE TO ENEMY TARGET
-        // ==========================================
 
         float distance =
             Vector3.Distance(
                 transform.position,
-                enemyTarget.position
+                target.position
             );
 
-        // Enemy has NOT reached the stronghold yet
+        // Enemy has not reached the stronghold yet
         if (distance > attackRange)
             return;
-
-        // ==========================================
-        // ATTACK COOLDOWN
-        // ==========================================
 
         if (attackTimer > 0f)
             return;
@@ -99,9 +90,7 @@ public class EnemyAttack : MonoBehaviour
             "FORCE FIELD ATTACK | " +
             gameObject.name +
             " → " +
-            targetStronghold.name +
-            " | Distance: " +
-            distance.ToString("F2")
+            targetStronghold.name
         );
 
         targetStronghold.DamageForceField(
@@ -113,7 +102,7 @@ public class EnemyAttack : MonoBehaviour
 
 
     // ==========================================
-    // ATTACK CHARACTER
+    // CHARACTER ATTACK
     // ==========================================
 
     private void AttackCharacter()
@@ -125,19 +114,60 @@ public class EnemyAttack : MonoBehaviour
             enemyMovement.CurrentTarget;
 
         if (target == null)
-            return;
+        {
+            Debug.LogWarning(
+                gameObject.name +
+                " has no character target."
+            );
 
-        if (!target.gameObject.activeSelf)
             return;
+        }
+
+        // ==========================================
+        // FIND PLAYER HEALTH
+        // ==========================================
 
         PlayerHealth playerHealth =
             target.GetComponent<PlayerHealth>();
 
+        // If PlayerHealth is on a parent
         if (playerHealth == null)
+        {
+            playerHealth =
+                target.GetComponentInParent<PlayerHealth>();
+        }
+
+        // If PlayerHealth is on a child
+        if (playerHealth == null)
+        {
+            playerHealth =
+                target.GetComponentInChildren<PlayerHealth>();
+        }
+
+        if (playerHealth == null)
+        {
+            Debug.LogWarning(
+                gameObject.name +
+                " cannot find PlayerHealth on " +
+                target.name
+            );
+
+            return;
+        }
+
+        // ==========================================
+        // CHECK PLAYER
+        // ==========================================
+
+        if (!target.gameObject.activeSelf)
             return;
 
         if (playerHealth.IsDead)
             return;
+
+        // ==========================================
+        // DISTANCE
+        // ==========================================
 
         float distance =
             Vector3.Distance(
@@ -148,20 +178,30 @@ public class EnemyAttack : MonoBehaviour
         if (distance > attackRange)
             return;
 
+        // ==========================================
+        // COOLDOWN
+        // ==========================================
+
         if (attackTimer > 0f)
             return;
+
+        // ==========================================
+        // DAMAGE
+        // ==========================================
 
         playerHealth.TakeDamage(
             attackDamage
         );
 
         Debug.Log(
-            "ENEMY ATTACK | " +
+            "PLAYER HIT | " +
             gameObject.name +
             " → " +
-            target.name +
+            playerHealth.gameObject.name +
             " | Damage: " +
-            attackDamage
+            attackDamage +
+            " | Distance: " +
+            distance.ToString("F2")
         );
 
         attackTimer = attackInterval;
@@ -177,7 +217,7 @@ public class EnemyAttack : MonoBehaviour
     {
         targetStronghold = stronghold;
 
-        if (stronghold == null)
+        if (targetStronghold == null)
         {
             Debug.LogWarning(
                 gameObject.name +
@@ -196,25 +236,21 @@ public class EnemyAttack : MonoBehaviour
             "TARGET ASSIGNED | " +
             gameObject.name +
             " → " +
-            stronghold.name
+            targetStronghold.name
         );
 
-        // ==========================================
-        // IMPORTANT:
-        // ASSIGN THE SAME TARGET TO MOVEMENT
-        // ==========================================
-
+        // Make sure movement has the same target
         if (enemyMovement != null)
         {
             enemyMovement.SetTarget(
-                stronghold
+                targetStronghold
             );
         }
     }
 
 
     // ==========================================
-    // OPTIONAL PUBLIC GETTER
+    // GET CURRENT STRONGHOLD
     // ==========================================
 
     public Stronghold CurrentTargetStronghold
