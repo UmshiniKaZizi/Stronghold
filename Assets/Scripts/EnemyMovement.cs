@@ -15,42 +15,73 @@ public class EnemyMovement : MonoBehaviour
 
     private NavMeshAgent agent;
 
+    public Transform CurrentTarget => target;
+    public Stronghold CurrentStronghold => targetStronghold;
+    public NavMeshAgent Agent => agent;
+
     private void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
+
+        if (agent == null)
+        {
+            Debug.LogError(gameObject.name + " is missing a NavMeshAgent!");
+        }
     }
 
     private void Start()
     {
+        if (agent == null)
+            return;
+
         agent.stoppingDistance = stoppingDistance;
+        agent.isStopped = false;
+
+        Debug.Log(gameObject.name + " EnemyMovement started.");
     }
 
     private void Update()
     {
+        if (agent == null)
+            return;
+
         if (targetStronghold == null)
             return;
 
-        // Stronghold has not been breached
+        // Before the stronghold is breached,
+        // move toward the stronghold.
         if (!targetStronghold.IsBreached)
         {
             MoveToStronghold();
+            return;
         }
-        // Stronghold has been breached
-        else
-        {
-            ChaseLivingCharacter();
-        }
+
+        // Once breached, chase a living character.
+        ChaseLivingCharacter();
     }
-
-
-    // ==========================================
-    // MOVE TO STRONGHOLD
-    // ==========================================
 
     private void MoveToStronghold()
     {
         if (target == null)
+        {
+            Debug.LogWarning(
+                gameObject.name +
+                " has a Stronghold target but no EnemyTarget."
+            );
+
+            agent.isStopped = true;
             return;
+        }
+
+        if (!agent.isOnNavMesh)
+        {
+            Debug.LogWarning(
+                gameObject.name +
+                " is NOT on the NavMesh!"
+            );
+
+            return;
+        }
 
         agent.isStopped = false;
         agent.stoppingDistance = stoppingDistance;
@@ -58,99 +89,98 @@ public class EnemyMovement : MonoBehaviour
         agent.SetDestination(target.position);
     }
 
-
-    // ==========================================
-    // CHASE CHARACTER
-    // ==========================================
-
     private void ChaseLivingCharacter()
     {
-        // If we already have a valid target,
-        // KEEP FOLLOWING THAT CHARACTER.
-        if (HasValidTarget())
+        // If our current target is dead,
+        // immediately find another living character.
+        if (!HasValidTarget())
         {
-            agent.isStopped = false;
-            agent.stoppingDistance = stoppingDistance;
+            Debug.Log(
+                gameObject.name +
+                " target is dead or invalid. Finding new target..."
+            );
 
-            agent.SetDestination(target.position);
-
-            return;
+            FindLivingCharacter();
         }
 
-        // Current target is dead/unavailable,
-        // so find a new living character.
-        FindLivingCharacter();
-
+        // No living characters left.
         if (target == null)
         {
             agent.isStopped = true;
             return;
         }
 
+        if (!agent.isOnNavMesh)
+            return;
+
         agent.isStopped = false;
         agent.stoppingDistance = stoppingDistance;
 
         agent.SetDestination(target.position);
     }
 
-
-    // ==========================================
-    // CHECK CURRENT TARGET
-    // ==========================================
-
     private bool HasValidTarget()
     {
         if (target == null)
             return false;
 
-        if (!target.gameObject.activeSelf)
-            return false;
-
-        PlayerHealth health =
-            target.GetComponent<PlayerHealth>();
+        PlayerHealth health = GetPlayerHealth(target);
 
         if (health == null)
-            return false;
+        {
+            Debug.LogWarning(
+                gameObject.name +
+                " could not find PlayerHealth on " +
+                target.name
+            );
 
+            return false;
+        }
+
+        // IMPORTANT:
+        // Do NOT check activeSelf here because your
+        // character switching system keeps characters
+        // alive in the world while changing control.
         if (health.IsDead)
             return false;
 
         return true;
     }
 
-
-    // ==========================================
-    // FIND LIVING CHARACTER
-    // ==========================================
-
     private void FindLivingCharacter()
     {
-        GameObject[] players =
-            GameObject.FindGameObjectsWithTag("Player");
+        GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
 
-        List<Transform> livingCharacters =
-            new List<Transform>();
+        Transform closestCharacter = null;
+        float closestDistance = Mathf.Infinity;
 
         foreach (GameObject player in players)
         {
-            if (!player.activeSelf)
+            if (player == null)
                 continue;
 
-            PlayerHealth health =
-                player.GetComponent<PlayerHealth>();
+            PlayerHealth health = GetPlayerHealth(player.transform);
 
             if (health == null)
                 continue;
 
+            // Skip dead characters.
             if (health.IsDead)
                 continue;
 
-            livingCharacters.Add(
-                player.transform
+            float distance = Vector3.Distance(
+                transform.position,
+                player.transform.position
             );
+
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestCharacter = player.transform;
+            }
         }
 
-        if (livingCharacters.Count == 0)
+        if (closestCharacter == null)
         {
             target = null;
 
@@ -162,38 +192,31 @@ public class EnemyMovement : MonoBehaviour
             return;
         }
 
-        // Find the closest living character
-        Transform closestCharacter = null;
-        float closestDistance = Mathf.Infinity;
-
-        foreach (Transform character in livingCharacters)
-        {
-            float distance =
-                Vector3.Distance(
-                    transform.position,
-                    character.position
-                );
-
-            if (distance < closestDistance)
-            {
-                closestDistance = distance;
-                closestCharacter = character;
-            }
-        }
-
         target = closestCharacter;
 
         Debug.Log(
+            "NEW TARGET | " +
             gameObject.name +
-            " is now targeting " +
+            " → " +
             target.name
         );
     }
 
+    private PlayerHealth GetPlayerHealth(Transform character)
+    {
+        if (character == null)
+            return null;
 
-    // ==========================================
-    // SET STRONGHOLD TARGET
-    // ==========================================
+        PlayerHealth health = character.GetComponent<PlayerHealth>();
+
+        if (health == null)
+            health = character.GetComponentInParent<PlayerHealth>();
+
+        if (health == null)
+            health = character.GetComponentInChildren<PlayerHealth>();
+
+        return health;
+    }
 
     public void SetTarget(Stronghold stronghold)
     {
@@ -201,9 +224,11 @@ public class EnemyMovement : MonoBehaviour
 
         if (stronghold == null)
         {
+            target = null;
+
             Debug.LogWarning(
                 gameObject.name +
-                ": Stronghold is null."
+                ": Stronghold target is NULL."
             );
 
             return;
@@ -212,17 +237,48 @@ public class EnemyMovement : MonoBehaviour
         Transform enemyTarget =
             stronghold.transform.Find("EnemyTarget");
 
-        if (enemyTarget != null)
+        if (enemyTarget == null)
         {
-            target = enemyTarget;
+            target = null;
+
+            Debug.LogError(
+                gameObject.name +
+                ": Could NOT find EnemyTarget under " +
+                stronghold.name
+            );
+
+            return;
         }
-        else
+
+        target = enemyTarget;
+
+        Debug.Log(
+            "MOVEMENT TARGET ASSIGNED | " +
+            gameObject.name +
+            " → " +
+            stronghold.name +
+            " | EnemyTarget: " +
+            target.name
+        );
+
+        if (agent != null && !agent.isOnNavMesh)
         {
             Debug.LogWarning(
                 gameObject.name +
-                ": EnemyTarget was not found under " +
-                stronghold.name
+                " is not currently on a NavMesh."
             );
+        }
+    }
+
+    public void ClearTarget()
+    {
+        target = null;
+        targetStronghold = null;
+
+        if (agent != null && agent.isOnNavMesh)
+        {
+            agent.isStopped = true;
+            agent.ResetPath();
         }
     }
 }

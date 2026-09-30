@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using System.Collections.Generic;
 
 public class CharacterSwap : MonoBehaviour
@@ -18,6 +19,13 @@ public class CharacterSwap : MonoBehaviour
 
     [Header("UI")]
     [SerializeField] private CharacterWheelUI characterWheelUI;
+
+    [Header("Input")]
+    [Tooltip("Input action used to switch to the previous character.")]
+    [SerializeField] private InputActionReference previousCharacterAction;
+
+    [Tooltip("Input action used to switch to the next character.")]
+    [SerializeField] private InputActionReference nextCharacterAction;
 
 
     // ==========================================
@@ -56,56 +64,103 @@ public class CharacterSwap : MonoBehaviour
 
 
     // ==========================================
-    // UPDATE
+    // ENABLE INPUT
     // ==========================================
 
-    private void Update()
+    private void OnEnable()
     {
-        // Previous character
-        if (Input.GetKeyDown(KeyCode.Q))
+        if (previousCharacterAction != null)
         {
-            int nextCharacter =
-                FindNextAliveCharacter(
-                    whichCharacter - 1,
-                    -1
-                );
-
-            if (nextCharacter != -1)
-            {
-                whichCharacter = nextCharacter;
-
-                Swap();
-            }
-            else
-            {
-                Debug.Log(
-                    "No living character available."
-                );
-            }
+            previousCharacterAction.action.Enable();
+            previousCharacterAction.action.performed +=
+                OnPreviousCharacter;
         }
 
-
-        // Next character
-        if (Input.GetKeyDown(KeyCode.E))
+        if (nextCharacterAction != null)
         {
-            int nextCharacter =
-                FindNextAliveCharacter(
-                    whichCharacter + 1,
-                    1
-                );
+            nextCharacterAction.action.Enable();
+            nextCharacterAction.action.performed +=
+                OnNextCharacter;
+        }
+    }
 
-            if (nextCharacter != -1)
-            {
-                whichCharacter = nextCharacter;
 
-                Swap();
-            }
-            else
-            {
-                Debug.Log(
-                    "No living character available."
-                );
-            }
+    // ==========================================
+    // DISABLE INPUT
+    // ==========================================
+
+    private void OnDisable()
+    {
+        if (previousCharacterAction != null)
+        {
+            previousCharacterAction.action.performed -=
+                OnPreviousCharacter;
+
+            previousCharacterAction.action.Disable();
+        }
+
+        if (nextCharacterAction != null)
+        {
+            nextCharacterAction.action.performed -=
+                OnNextCharacter;
+
+            nextCharacterAction.action.Disable();
+        }
+    }
+
+
+    // ==========================================
+    // PREVIOUS CHARACTER
+    // ==========================================
+
+    private void OnPreviousCharacter(
+        InputAction.CallbackContext context)
+    {
+        int nextCharacter =
+            FindNextAliveCharacter(
+                whichCharacter - 1,
+                -1
+            );
+
+        if (nextCharacter != -1)
+        {
+            whichCharacter = nextCharacter;
+
+            Swap();
+        }
+        else
+        {
+            Debug.Log(
+                "No living character available."
+            );
+        }
+    }
+
+
+    // ==========================================
+    // NEXT CHARACTER
+    // ==========================================
+
+    private void OnNextCharacter(
+        InputAction.CallbackContext context)
+    {
+        int nextCharacter =
+            FindNextAliveCharacter(
+                whichCharacter + 1,
+                1
+            );
+
+        if (nextCharacter != -1)
+        {
+            whichCharacter = nextCharacter;
+
+            Swap();
+        }
+        else
+        {
+            Debug.Log(
+                "No living character available."
+            );
         }
     }
 
@@ -153,7 +208,6 @@ public class CharacterSwap : MonoBehaviour
             }
         }
 
-        // No living characters found
         return -1;
     }
 
@@ -170,13 +224,18 @@ public class CharacterSwap : MonoBehaviour
             return;
         }
 
+        // ==========================================
+        // SET CURRENT CHARACTER
+        // ==========================================
 
-        // Set current character
         character =
             possibleCharacters[whichCharacter];
 
 
-        // Check if selected character is dead
+        // ==========================================
+        // CHECK IF DEAD
+        // ==========================================
+
         PlayerHealth selectedHealth =
             character.GetComponent<PlayerHealth>();
 
@@ -188,7 +247,6 @@ public class CharacterSwap : MonoBehaviour
                 " is DEAD and cannot be selected."
             );
 
-            // Find another living character
             int nextCharacter =
                 FindNextAliveCharacter(
                     whichCharacter + 1,
@@ -204,14 +262,18 @@ public class CharacterSwap : MonoBehaviour
                 return;
             }
 
-            whichCharacter = nextCharacter;
+            whichCharacter =
+                nextCharacter;
 
             character =
                 possibleCharacters[whichCharacter];
         }
 
 
-        // Loop through all characters
+        // ==========================================
+        // LOOP THROUGH CHARACTERS
+        // ==========================================
+
         for (int i = 0;
              i < possibleCharacters.Count;
              i++)
@@ -222,12 +284,14 @@ public class CharacterSwap : MonoBehaviour
             if (currentCharacter == null)
                 continue;
 
-
             bool isActiveCharacter =
                 currentCharacter == character;
 
 
-            // Check character health
+            // ==========================================
+            // HEALTH
+            // ==========================================
+
             PlayerHealth health =
                 currentCharacter.GetComponent<PlayerHealth>();
 
@@ -241,8 +305,7 @@ public class CharacterSwap : MonoBehaviour
             // ==========================================
 
             PlayerMovement movement =
-                currentCharacter
-                .GetComponent<PlayerMovement>();
+                currentCharacter.GetComponent<PlayerMovement>();
 
             if (movement != null)
             {
@@ -265,8 +328,7 @@ public class CharacterSwap : MonoBehaviour
             // ==========================================
 
             PlayerLook look =
-                currentCharacter
-                .GetComponent<PlayerLook>();
+                currentCharacter.GetComponent<PlayerLook>();
 
             if (look != null)
             {
@@ -281,8 +343,7 @@ public class CharacterSwap : MonoBehaviour
             // ==========================================
 
             Camera playerCamera =
-                currentCharacter
-                .GetComponentInChildren<Camera>();
+                currentCharacter.GetComponentInChildren<Camera>();
 
             if (playerCamera != null)
             {
@@ -297,8 +358,7 @@ public class CharacterSwap : MonoBehaviour
             // ==========================================
 
             PlayerShooting shooting =
-                currentCharacter
-                .GetComponent<PlayerShooting>();
+                currentCharacter.GetComponent<PlayerShooting>();
 
             if (shooting != null)
             {
