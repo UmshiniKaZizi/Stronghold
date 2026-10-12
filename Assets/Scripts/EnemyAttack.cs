@@ -1,3 +1,4 @@
+
 using UnityEngine;
 using System.Collections;
 
@@ -16,22 +17,43 @@ public class EnemyAttack : MonoBehaviour
     [SerializeField] private float lungeSpeed = 8f;
     [SerializeField] private float returnSpeed = 6f;
 
+    [Header("Animation")]
+    [SerializeField] private Animator animator;
+    [SerializeField] private float attackParameterDuration = 0.2f;
+
     private float attackTimer;
-
     private EnemyMovement enemyMovement;
-
     private bool isAttacking;
+
+    private Coroutine attack1ResetCoroutine;
+    private Coroutine attack2ResetCoroutine;
+
+    private static readonly int Attack1Hash =
+        Animator.StringToHash("Attack1");
+
+    private static readonly int Attack2Hash =
+        Animator.StringToHash("Attack2");
 
     private void Awake()
     {
-        enemyMovement =
-            GetComponent<EnemyMovement>();
+        enemyMovement = GetComponent<EnemyMovement>();
+
+        if (animator == null)
+            animator = GetComponentInChildren<Animator>();
 
         if (enemyMovement == null)
         {
             Debug.LogError(
                 gameObject.name +
                 " is missing EnemyMovement!"
+            );
+        }
+
+        if (animator == null)
+        {
+            Debug.LogWarning(
+                gameObject.name +
+                " has no Animator assigned or found in children."
             );
         }
     }
@@ -43,26 +65,19 @@ public class EnemyAttack : MonoBehaviour
 
         attackTimer -= Time.deltaTime;
 
-        // ==========================================
-        // FORCE FIELD
-        // ==========================================
-
+        // Attack the force field while it is intact.
         if (!targetStronghold.IsBreached)
         {
             AttackForceField();
             return;
         }
 
-        // ==========================================
-        // CHARACTER
-        // ==========================================
-
+        // Do not start another player attack during a lunge.
         if (!isAttacking)
         {
             AttackCharacter();
         }
     }
-
 
     // ==========================================
     // FORCE FIELD ATTACK
@@ -79,24 +94,24 @@ public class EnemyAttack : MonoBehaviour
         if (enemyMovement == null)
             return;
 
-        Transform target =
-            enemyMovement.CurrentTarget;
+        Transform target = enemyMovement.CurrentTarget;
 
         if (target == null)
             return;
 
-        float distance =
-            Vector3.Distance(
-                transform.position,
-                target.position
-            );
+        float distance = Vector3.Distance(
+            transform.position,
+            target.position
+        );
 
-        // Not close enough
         if (distance > attackRange)
             return;
 
         if (attackTimer > 0f)
             return;
+
+        // Play Attack1 for a force-field attack.
+        PlayAttackAnimation(Attack1Hash);
 
         Debug.Log(
             "FORCE FIELD ATTACK | " +
@@ -105,14 +120,10 @@ public class EnemyAttack : MonoBehaviour
             targetStronghold.name
         );
 
-        targetStronghold.DamageForceField(
-            attackDamage
-        );
+        targetStronghold.DamageForceField(attackDamage);
 
-        attackTimer =
-            attackInterval;
+        attackTimer = attackInterval;
     }
-
 
     // ==========================================
     // CHARACTER ATTACK
@@ -123,30 +134,12 @@ public class EnemyAttack : MonoBehaviour
         if (enemyMovement == null)
             return;
 
-        Transform target =
-            enemyMovement.CurrentTarget;
+        Transform target = enemyMovement.CurrentTarget;
 
         if (target == null)
             return;
 
-        // ==========================================
-        // FIND PLAYER HEALTH
-        // ==========================================
-
-        PlayerHealth playerHealth =
-            target.GetComponent<PlayerHealth>();
-
-        if (playerHealth == null)
-        {
-            playerHealth =
-                target.GetComponentInParent<PlayerHealth>();
-        }
-
-        if (playerHealth == null)
-        {
-            playerHealth =
-                target.GetComponentInChildren<PlayerHealth>();
-        }
+        PlayerHealth playerHealth = GetPlayerHealth(target);
 
         if (playerHealth == null)
         {
@@ -159,42 +152,41 @@ public class EnemyAttack : MonoBehaviour
             return;
         }
 
-        // Player is dead
         if (playerHealth.IsDead)
             return;
 
-        // ==========================================
-        // DISTANCE
-        // ==========================================
-
-        float distance =
-            Vector3.Distance(
-                transform.position,
-                target.position
-            );
+        float distance = Vector3.Distance(
+            transform.position,
+            target.position
+        );
 
         if (distance > attackRange)
             return;
 
-        // ==========================================
-        // COOLDOWN
-        // ==========================================
-
         if (attackTimer > 0f)
             return;
 
-        // ==========================================
-        // START VISUAL ATTACK
-        // ==========================================
-
         StartCoroutine(
-            LungeAttack(
-                target,
-                playerHealth
-            )
+            LungeAttack(target, playerHealth)
         );
     }
 
+    private PlayerHealth GetPlayerHealth(Transform character)
+    {
+        if (character == null)
+            return null;
+
+        PlayerHealth health =
+            character.GetComponent<PlayerHealth>();
+
+        if (health == null)
+            health = character.GetComponentInParent<PlayerHealth>();
+
+        if (health == null)
+            health = character.GetComponentInChildren<PlayerHealth>();
+
+        return health;
+    }
 
     // ==========================================
     // LUNGE ATTACK
@@ -206,97 +198,61 @@ public class EnemyAttack : MonoBehaviour
     {
         isAttacking = true;
 
-        // ==========================================
-        // STOP NAVIGATION
-        // ==========================================
+        // Play Attack2 when attacking a player.
+        PlayAttackAnimation(Attack2Hash);
 
+        // Stop navigation during the lunge.
         if (enemyMovement != null &&
             enemyMovement.Agent != null)
         {
             enemyMovement.Agent.isStopped = true;
         }
 
-        // ==========================================
-        // FACE PLAYER
-        // ==========================================
-
+        // Face the player.
         Vector3 direction =
-            target.position -
-            transform.position;
+            target.position - transform.position;
 
         direction.y = 0f;
 
         if (direction.sqrMagnitude > 0.001f)
         {
-            Quaternion targetRotation =
-                Quaternion.LookRotation(
-                    direction
-                );
-
             transform.rotation =
-                targetRotation;
+                Quaternion.LookRotation(direction);
         }
 
-        // ==========================================
-        // STORE START POSITION
-        // ==========================================
-
-        Vector3 startPosition =
-            transform.position;
-
-        // ==========================================
-        // CALCULATE LUNGE POSITION
-        // ==========================================
-
-        Vector3 forward =
-            transform.forward;
+        Vector3 startPosition = transform.position;
 
         Vector3 lungePosition =
-            startPosition +
-            forward * lungeDistance;
+            startPosition + transform.forward * lungeDistance;
 
-        // ==========================================
-        // LUNGE FORWARD
-        // ==========================================
-
-        while (
-            Vector3.Distance(
-                transform.position,
-                lungePosition
-            ) > 0.05f)
+        // Move forward.
+        while (Vector3.Distance(
+                   transform.position,
+                   lungePosition) > 0.05f)
         {
-            transform.position =
-                Vector3.MoveTowards(
-                    transform.position,
-                    lungePosition,
-                    lungeSpeed *
-                    Time.deltaTime
-                );
+            transform.position = Vector3.MoveTowards(
+                transform.position,
+                lungePosition,
+                lungeSpeed * Time.deltaTime
+            );
 
             yield return null;
         }
 
-        // ==========================================
-        // DEAL DAMAGE
-        // ==========================================
-
+        // Deal damage if the player is still alive
+        // and remains within reach.
         if (target != null &&
             playerHealth != null &&
             !playerHealth.IsDead)
         {
-            float distance =
-                Vector3.Distance(
-                    transform.position,
-                    target.position
-                );
+            float distance = Vector3.Distance(
+                transform.position,
+                target.position
+            );
 
-            // Only damage if we're still reasonably
-            // close to the player.
             if (distance <= attackRange + lungeDistance)
             {
-                playerHealth.TakeDamage(
-                    attackDamage
-                );
+                playerHealth.TakeDamage(attackDamage);
 
                 Debug.Log(
                     "PLAYER ATTACK | " +
@@ -309,43 +265,27 @@ public class EnemyAttack : MonoBehaviour
             }
         }
 
-        // ==========================================
-        // RETURN
-        // ==========================================
-
-        while (
-            Vector3.Distance(
-                transform.position,
-                startPosition
-            ) > 0.05f)
+        // Return to the starting position.
+        while (Vector3.Distance(
+                   transform.position,
+                   startPosition) > 0.05f)
         {
-            transform.position =
-                Vector3.MoveTowards(
-                    transform.position,
-                    startPosition,
-                    returnSpeed *
-                    Time.deltaTime
-                );
+            transform.position = Vector3.MoveTowards(
+                transform.position,
+                startPosition,
+                returnSpeed * Time.deltaTime
+            );
 
             yield return null;
         }
 
-        transform.position =
-            startPosition;
+        transform.position = startPosition;
 
-        // ==========================================
-        // RESET COOLDOWN
-        // ==========================================
-
-        attackTimer =
-            attackInterval;
-
+        // Reset the attack cooldown.
+        attackTimer = attackInterval;
         isAttacking = false;
 
-        // ==========================================
-        // GIVE NAVMESH CONTROL BACK
-        // ==========================================
-
+        // Give navigation control back.
         if (enemyMovement != null &&
             enemyMovement.Agent != null)
         {
@@ -353,16 +293,71 @@ public class EnemyAttack : MonoBehaviour
         }
     }
 
+    // ==========================================
+    // ANIMATION
+    // ==========================================
+
+    private void PlayAttackAnimation(int parameterHash)
+    {
+        if (animator == null)
+            return;
+
+        // Restart the reset timer if this parameter
+        // is already active.
+        if (parameterHash == Attack1Hash)
+        {
+            if (attack1ResetCoroutine != null)
+                StopCoroutine(attack1ResetCoroutine);
+
+            animator.SetBool(Attack1Hash, true);
+
+            attack1ResetCoroutine = StartCoroutine(
+                ResetAttackParameter(
+                    Attack1Hash,
+                    true
+                )
+            );
+        }
+        else if (parameterHash == Attack2Hash)
+        {
+            if (attack2ResetCoroutine != null)
+                StopCoroutine(attack2ResetCoroutine);
+
+            animator.SetBool(Attack2Hash, true);
+
+            attack2ResetCoroutine = StartCoroutine(
+                ResetAttackParameter(
+                    Attack2Hash,
+                    false
+                )
+            );
+        }
+    }
+
+    private IEnumerator ResetAttackParameter(
+        int parameterHash,
+        bool isAttack1)
+    {
+        yield return new WaitForSeconds(
+            attackParameterDuration
+        );
+
+        if (animator != null)
+            animator.SetBool(parameterHash, false);
+
+        if (isAttack1)
+            attack1ResetCoroutine = null;
+        else
+            attack2ResetCoroutine = null;
+    }
 
     // ==========================================
     // SET STRONGHOLD TARGET
     // ==========================================
 
-    public void SetTargetStronghold(
-        Stronghold stronghold)
+    public void SetTargetStronghold(Stronghold stronghold)
     {
-        targetStronghold =
-            stronghold;
+        targetStronghold = stronghold;
 
         if (targetStronghold == null)
         {
@@ -372,9 +367,7 @@ public class EnemyAttack : MonoBehaviour
             );
 
             if (enemyMovement != null)
-            {
                 enemyMovement.ClearTarget();
-            }
 
             return;
         }
@@ -387,23 +380,15 @@ public class EnemyAttack : MonoBehaviour
         );
 
         if (enemyMovement != null)
-        {
-            enemyMovement.SetTarget(
-                targetStronghold
-            );
-        }
+            enemyMovement.SetTarget(targetStronghold);
     }
 
-
     // ==========================================
-    // CURRENT STRONGHOLD
+    // CURRENT TARGET
     // ==========================================
 
     public Stronghold CurrentTargetStronghold
     {
-        get
-        {
-            return targetStronghold;
-        }
+        get { return targetStronghold; }
     }
 }

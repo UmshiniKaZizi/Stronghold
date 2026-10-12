@@ -1,6 +1,6 @@
+
 using UnityEngine;
 using UnityEngine.AI;
-using System.Collections.Generic;
 
 public class EnemyMovement : MonoBehaviour
 {
@@ -13,7 +13,14 @@ public class EnemyMovement : MonoBehaviour
     [Header("Movement")]
     [SerializeField] private float stoppingDistance = 1.5f;
 
+    [Header("Animation")]
+    [SerializeField] private Animator animator;
+    [SerializeField] private float movementThreshold = 0.1f;
+
     private NavMeshAgent agent;
+
+    private static readonly int SpeedHash =
+        Animator.StringToHash("Speed");
 
     public Transform CurrentTarget => target;
     public Stronghold CurrentStronghold => targetStronghold;
@@ -23,9 +30,23 @@ public class EnemyMovement : MonoBehaviour
     {
         agent = GetComponent<NavMeshAgent>();
 
+        if (animator == null)
+            animator = GetComponentInChildren<Animator>();
+
         if (agent == null)
         {
-            Debug.LogError(gameObject.name + " is missing a NavMeshAgent!");
+            Debug.LogError(
+                gameObject.name +
+                " is missing a NavMeshAgent!"
+            );
+        }
+
+        if (animator == null)
+        {
+            Debug.LogWarning(
+                gameObject.name +
+                " has no Animator assigned or found in children."
+            );
         }
     }
 
@@ -37,7 +58,10 @@ public class EnemyMovement : MonoBehaviour
         agent.stoppingDistance = stoppingDistance;
         agent.isStopped = false;
 
-        Debug.Log(gameObject.name + " EnemyMovement started.");
+        Debug.Log(
+            gameObject.name +
+            " EnemyMovement started."
+        );
     }
 
     private void Update()
@@ -48,16 +72,40 @@ public class EnemyMovement : MonoBehaviour
         if (targetStronghold == null)
             return;
 
-        // Before the stronghold is breached,
-        // move toward the stronghold.
+        // Move toward the stronghold until it is breached.
         if (!targetStronghold.IsBreached)
         {
             MoveToStronghold();
             return;
         }
 
-        // Once breached, chase a living character.
+        // After the breach, chase a living character.
         ChaseLivingCharacter();
+    }
+
+    private void LateUpdate()
+    {
+        UpdateLocomotionAnimation();
+    }
+
+    private void UpdateLocomotionAnimation()
+    {
+        if (animator == null || agent == null)
+            return;
+
+        // Ignore movement while navigation is stopped.
+        float movementSpeed = 0f;
+
+        if (agent.isOnNavMesh && !agent.isStopped)
+        {
+            movementSpeed = agent.velocity.magnitude;
+        }
+
+        // This Blend Tree uses 0 for Idle and 1 for Run.
+        float animationSpeed =
+            movementSpeed > movementThreshold ? 1f : 0f;
+
+        animator.SetFloat(SpeedHash, animationSpeed);
     }
 
     private void MoveToStronghold()
@@ -91,8 +139,6 @@ public class EnemyMovement : MonoBehaviour
 
     private void ChaseLivingCharacter()
     {
-        // If our current target is dead,
-        // immediately find another living character.
         if (!HasValidTarget())
         {
             Debug.Log(
@@ -103,7 +149,6 @@ public class EnemyMovement : MonoBehaviour
             FindLivingCharacter();
         }
 
-        // No living characters left.
         if (target == null)
         {
             agent.isStopped = true;
@@ -137,10 +182,7 @@ public class EnemyMovement : MonoBehaviour
             return false;
         }
 
-        // IMPORTANT:
-        // Do NOT check activeSelf here because your
-        // character switching system keeps characters
-        // alive in the world while changing control.
+        // Characters remain active when control switches.
         if (health.IsDead)
             return false;
 
@@ -149,7 +191,8 @@ public class EnemyMovement : MonoBehaviour
 
     private void FindLivingCharacter()
     {
-        GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+        GameObject[] players =
+            GameObject.FindGameObjectsWithTag("Player");
 
         Transform closestCharacter = null;
         float closestDistance = Mathf.Infinity;
@@ -159,13 +202,10 @@ public class EnemyMovement : MonoBehaviour
             if (player == null)
                 continue;
 
-            PlayerHealth health = GetPlayerHealth(player.transform);
+            PlayerHealth health =
+                GetPlayerHealth(player.transform);
 
-            if (health == null)
-                continue;
-
-            // Skip dead characters.
-            if (health.IsDead)
+            if (health == null || health.IsDead)
                 continue;
 
             float distance = Vector3.Distance(
@@ -207,7 +247,8 @@ public class EnemyMovement : MonoBehaviour
         if (character == null)
             return null;
 
-        PlayerHealth health = character.GetComponent<PlayerHealth>();
+        PlayerHealth health =
+            character.GetComponent<PlayerHealth>();
 
         if (health == null)
             health = character.GetComponentInParent<PlayerHealth>();
