@@ -64,14 +64,26 @@ public class PlayerLook : MonoBehaviour
         lookInput = value.Get<Vector2>();
     }
 
+    // Retained for compatibility with existing aiming code.
     public void SetAiming(bool aiming)
     {
         isAiming = aiming;
     }
 
+    // Used by the permanent Sniper scope system.
+    public void SetScoped(bool scoped, float multiplier)
+    {
+        isAiming = scoped;
+        aimSensitivityMultiplier = scoped ? multiplier : 0.5f;
+    }
+
     private void HandleFOV()
     {
         if (playerCamera == null)
+            return;
+
+        // SniperScopeController manages the Sniper camera FOV.
+        if (GetComponent<SniperScopeController>() != null)
             return;
 
         float targetFOV = isAiming ? aimFOV : normalFOV;

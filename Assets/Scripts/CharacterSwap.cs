@@ -352,6 +352,23 @@ public class CharacterSwap : MonoBehaviour
                     !isDead;
             }
 
+            
+            // ==========================================
+            // SNIPER SCOPE
+            // ==========================================
+
+            SniperScopeController scope =
+                currentCharacter.GetComponent<SniperScopeController>();
+
+            if (scope != null)
+            {
+                bool shouldBeScoped =
+                    isActiveCharacter && !isDead;
+
+                scope.enabled = true;
+                scope.SetControlled(shouldBeScoped);
+            }
+
 
             // ==========================================
             // SHOOTING
