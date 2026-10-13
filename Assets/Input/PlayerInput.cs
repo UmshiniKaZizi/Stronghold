@@ -163,6 +163,15 @@ public partial class @PlayerInput: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Aim"",
+                    ""type"": ""Button"",
+                    ""id"": ""a2d6f3a0-9d09-4c65-b8a4-432cd6a53cfa"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": ""Press(behavior=2)"",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -429,6 +438,17 @@ public partial class @PlayerInput: IInputActionCollection2, IDisposable
                     ""action"": ""NextCharacter"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""3f169d7e-e5ea-48d1-8759-932913580101"",
+                    ""path"": ""<Mouse>/rightButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Aim"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -445,6 +465,7 @@ public partial class @PlayerInput: IInputActionCollection2, IDisposable
         m_OnFoot_Reload = m_OnFoot.FindAction("Reload", throwIfNotFound: true);
         m_OnFoot_PreviousCharacter = m_OnFoot.FindAction("PreviousCharacter", throwIfNotFound: true);
         m_OnFoot_NextCharacter = m_OnFoot.FindAction("NextCharacter", throwIfNotFound: true);
+        m_OnFoot_Aim = m_OnFoot.FindAction("Aim", throwIfNotFound: true);
     }
 
     ~@PlayerInput()
@@ -533,6 +554,7 @@ public partial class @PlayerInput: IInputActionCollection2, IDisposable
     private readonly InputAction m_OnFoot_Reload;
     private readonly InputAction m_OnFoot_PreviousCharacter;
     private readonly InputAction m_OnFoot_NextCharacter;
+    private readonly InputAction m_OnFoot_Aim;
     /// <summary>
     /// Provides access to input actions defined in input action map "OnFoot".
     /// </summary>
@@ -576,6 +598,10 @@ public partial class @PlayerInput: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "OnFoot/NextCharacter".
         /// </summary>
         public InputAction @NextCharacter => m_Wrapper.m_OnFoot_NextCharacter;
+        /// <summary>
+        /// Provides access to the underlying input action "OnFoot/Aim".
+        /// </summary>
+        public InputAction @Aim => m_Wrapper.m_OnFoot_Aim;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -626,6 +652,9 @@ public partial class @PlayerInput: IInputActionCollection2, IDisposable
             @NextCharacter.started += instance.OnNextCharacter;
             @NextCharacter.performed += instance.OnNextCharacter;
             @NextCharacter.canceled += instance.OnNextCharacter;
+            @Aim.started += instance.OnAim;
+            @Aim.performed += instance.OnAim;
+            @Aim.canceled += instance.OnAim;
         }
 
         /// <summary>
@@ -661,6 +690,9 @@ public partial class @PlayerInput: IInputActionCollection2, IDisposable
             @NextCharacter.started -= instance.OnNextCharacter;
             @NextCharacter.performed -= instance.OnNextCharacter;
             @NextCharacter.canceled -= instance.OnNextCharacter;
+            @Aim.started -= instance.OnAim;
+            @Aim.performed -= instance.OnAim;
+            @Aim.canceled -= instance.OnAim;
         }
 
         /// <summary>
@@ -757,5 +789,12 @@ public partial class @PlayerInput: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnNextCharacter(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Aim" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnAim(InputAction.CallbackContext context);
     }
 }
