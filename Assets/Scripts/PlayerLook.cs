@@ -19,8 +19,9 @@ public class PlayerLook : MonoBehaviour
     [SerializeField] private float aimTransitionSpeed = 10f;
 
     [Header("Recoil")]
-    [SerializeField] private float recoilSnappiness = 15f;
-    [SerializeField] private float recoilReturnSpeed = 10f;
+    [SerializeField] private float recoilSnappiness = 18f;
+    [SerializeField] private float recoilReturnSpeed = 4f;
+    [SerializeField] private float maxRecoil = 15f;
 
     private Camera playerCamera;
     private float normalFOV;
@@ -64,13 +65,11 @@ public class PlayerLook : MonoBehaviour
         lookInput = value.Get<Vector2>();
     }
 
-    // Retained for compatibility with existing aiming code.
     public void SetAiming(bool aiming)
     {
         isAiming = aiming;
     }
 
-    // Used by the permanent Sniper scope system.
     public void SetScoped(bool scoped, float multiplier)
     {
         isAiming = scoped;
@@ -82,7 +81,7 @@ public class PlayerLook : MonoBehaviour
         if (playerCamera == null)
             return;
 
-        // SniperScopeController manages the Sniper camera FOV.
+        // SniperScopeController manages the sniper camera FOV.
         if (GetComponent<SniperScopeController>() != null)
             return;
 
@@ -117,7 +116,9 @@ public class PlayerLook : MonoBehaviour
         if (cam != null)
         {
             cam.localRotation = Quaternion.Euler(
-                xRotation - currentRecoil, 0f, 0f
+                Mathf.Clamp(xRotation - currentRecoil, -90f, 90f),
+                0f,
+                0f
             );
         }
 
@@ -126,8 +127,11 @@ public class PlayerLook : MonoBehaviour
 
     public void AddRecoil(float amount)
     {
-        targetRecoil += amount;
-        targetRecoil = Mathf.Clamp(targetRecoil, 0f, 5f);
+        targetRecoil = Mathf.Clamp(
+            targetRecoil + amount,
+            0f,
+            maxRecoil
+        );
     }
 
     private void HandleRecoil()
@@ -138,7 +142,7 @@ public class PlayerLook : MonoBehaviour
             recoilSnappiness * Time.deltaTime
         );
 
-        targetRecoil = Mathf.Lerp(
+        targetRecoil = Mathf.MoveTowards(
             targetRecoil,
             0f,
             recoilReturnSpeed * Time.deltaTime
