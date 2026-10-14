@@ -243,11 +243,8 @@ MonoBehaviour:
   attackDamage: 10
   attackInterval: 1
   attackRange: 8
-  lungeDistance: 1
-  lungeSpeed: 8
-  returnSpeed: 6
   animator: {fileID: 6834647080254086990}
-  attackParameterDuration: 0.2
+  attackAnimationDuration: 1
 --- !u!114 &4688591519149025629
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6284,11 +6281,8 @@ MonoBehaviour:
   attackDamage: 10
   attackInterval: 1
   attackRange: 8
-  lungeDistance: 1
-  lungeSpeed: 8
-  returnSpeed: 6
   animator: {fileID: 4424948286361785394}
-  attackParameterDuration: 0.2
+  attackAnimationDuration: 1
 --- !u!114 &3193419871379607186
 MonoBehaviour:
   m_ObjectHideFlags: 0

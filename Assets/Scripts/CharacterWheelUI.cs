@@ -1,3 +1,4 @@
+
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
@@ -8,6 +9,16 @@ public class CharacterWheelUI : MonoBehaviour
     [SerializeField] private Image assaultSlot;
     [SerializeField] private Image artillerySlot;
     [SerializeField] private Image sniperSlot;
+
+    [Header("Health Bar Fills")]
+    [SerializeField] private Image assaultHealthFill;
+    [SerializeField] private Image artilleryHealthFill;
+    [SerializeField] private Image sniperHealthFill;
+
+    [Header("Player Health References")]
+    [SerializeField] private PlayerHealth assaultHealth;
+    [SerializeField] private PlayerHealth artilleryHealth;
+    [SerializeField] private PlayerHealth sniperHealth;
 
     [Header("Selection")]
     [SerializeField] private Color normalColor = Color.white;
@@ -20,59 +31,64 @@ public class CharacterWheelUI : MonoBehaviour
 
     [Header("Selection Sounds")]
     [SerializeField] private AudioSource audioSource;
-
     [SerializeField] private AudioClip assaultSound;
     [SerializeField] private AudioClip artillerySound;
     [SerializeField] private AudioClip sniperSound;
 
+    private void Start()
+    {
+        UpdateAllHealthBars();
+    }
 
+    private void Update()
+    {
+        UpdateAllHealthBars();
+    }
 
     public void UpdateCharacterSelection(int selectedCharacter)
     {
-        StartCoroutine(
-            AnimateSlot(
-                assaultSlot,
-                selectedCharacter == 0
-            )
-        );
-
-        StartCoroutine(
-            AnimateSlot(
-                artillerySlot,
-                selectedCharacter == 1
-            )
-        );
-
-        StartCoroutine(
-            AnimateSlot(
-                sniperSlot,
-                selectedCharacter == 2
-            )
-        );
+        StartCoroutine(AnimateSlot(assaultSlot, selectedCharacter == 0));
+        StartCoroutine(AnimateSlot(artillerySlot, selectedCharacter == 1));
+        StartCoroutine(AnimateSlot(sniperSlot, selectedCharacter == 2));
 
         PlaySelectionSound(selectedCharacter);
 
+        if (assaultSlot != null)
+            assaultSlot.color = selectedCharacter == 0
+                ? selectedColor : normalColor;
 
-        // Reset all character slots
-        assaultSlot.color = normalColor;
-        artillerySlot.color = normalColor;
-        sniperSlot.color = normalColor;
+        if (artillerySlot != null)
+            artillerySlot.color = selectedCharacter == 1
+                ? selectedColor : normalColor;
 
-        // Highlight the currently selected character
-        switch (selectedCharacter)
-        {
-            case 0:
-                assaultSlot.color = selectedColor;
-                break;
+        if (sniperSlot != null)
+            sniperSlot.color = selectedCharacter == 2
+                ? selectedColor : normalColor;
+    }
 
-            case 1:
-                artillerySlot.color = selectedColor;
-                break;
+    private void UpdateAllHealthBars()
+    {
+        UpdateHealthBar(assaultHealth, assaultHealthFill);
+        UpdateHealthBar(artilleryHealth, artilleryHealthFill);
+        UpdateHealthBar(sniperHealth, sniperHealthFill);
+    }
 
-            case 2:
-                sniperSlot.color = selectedColor;
-                break;
-        }
+    private void UpdateHealthBar(
+        PlayerHealth playerHealth,
+        Image healthFill)
+    {
+        if (playerHealth == null || healthFill == null)
+            return;
+
+        float healthPercent = playerHealth.MaxHealth > 0f
+            ? playerHealth.CurrentHealth / playerHealth.MaxHealth
+            : 0f;
+
+        healthFill.fillAmount = Mathf.Clamp01(healthPercent);
+
+        // Dead characters have empty health bars.
+        if (playerHealth.IsDead)
+            healthFill.fillAmount = 0f;
     }
 
     private void PlaySelectionSound(int selectedCharacter)
@@ -83,82 +99,58 @@ public class CharacterWheelUI : MonoBehaviour
         switch (selectedCharacter)
         {
             case 0:
-                audioSource.PlayOneShot(assaultSound);
+                if (assaultSound != null)
+                    audioSource.PlayOneShot(assaultSound);
                 break;
 
             case 1:
-                audioSource.PlayOneShot(artillerySound);
+                if (artillerySound != null)
+                    audioSource.PlayOneShot(artillerySound);
                 break;
 
             case 2:
-                audioSource.PlayOneShot(sniperSound);
+                if (sniperSound != null)
+                    audioSource.PlayOneShot(sniperSound);
                 break;
         }
     }
 
     private IEnumerator AnimateSlot(Image slot, bool selected)
     {
-        Transform slotTransform = slot.transform;
+        if (slot == null)
+            yield break;
 
-        // Change colour
-        slot.color = selected
-            ? selectedColor
-            : normalColor;
+        Transform slotTransform = slot.transform;
 
         if (!selected)
         {
-            // Return inactive characters to normal size
-            slotTransform.localScale =
-                Vector3.one * normalScale;
-
+            slotTransform.localScale = Vector3.one * normalScale;
             yield break;
         }
 
-        // Selected character starts slightly smaller
-        slotTransform.localScale =
-            Vector3.one * normalScale;
+        slotTransform.localScale = Vector3.one * normalScale;
 
-        // Grow
-        yield return ScaleTo(
-            slotTransform,
-            1.25f,
-            0.08f
-        );
-
-        // Shrink slightly
-        yield return ScaleTo(
-            slotTransform,
-            1.12f,
-            0.06f
-        );
-
-        // Settle
-        yield return ScaleTo(
-            slotTransform,
-            selectedScale,
-            0.08f
-        );
+        yield return ScaleTo(slotTransform, 1.25f, 0.08f);
+        yield return ScaleTo(slotTransform, 1.12f, 0.06f);
+        yield return ScaleTo(slotTransform, selectedScale, 0.08f);
     }
 
     private IEnumerator ScaleTo(
         Transform target,
         float targetScale,
-        float duration
-    )
+        float duration)
     {
         Vector3 startScale = target.localScale;
-
-        Vector3 endScale =
-            Vector3.one * targetScale;
-
+        Vector3 endScale = Vector3.one * targetScale;
         float time = 0f;
 
         while (time < duration)
         {
             time += Time.deltaTime;
 
-            float progress =
-                Mathf.Clamp01(time / duration);
+            float progress = duration > 0f
+                ? Mathf.Clamp01(time / duration)
+                : 1f;
 
             target.localScale = Vector3.Lerp(
                 startScale,
@@ -171,7 +163,4 @@ public class CharacterWheelUI : MonoBehaviour
 
         target.localScale = endScale;
     }
-
-
-
 }

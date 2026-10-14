@@ -5,11 +5,15 @@ public class PlayerHealth : MonoBehaviour
     [Header("Health")]
     [SerializeField] private float maxHealth = 100f;
 
+    [Header("Assigned Stronghold")]
+    [SerializeField] private Stronghold associatedStronghold;
+
     private float currentHealth;
-    private bool hasDied = false;
+    private bool hasDied;
 
     public float CurrentHealth => currentHealth;
-    public bool IsDead => currentHealth <= 0f;
+    public float MaxHealth => maxHealth;
+    public bool IsDead => hasDied || currentHealth <= 0f;
 
     private void Start()
     {
@@ -18,26 +22,18 @@ public class PlayerHealth : MonoBehaviour
 
     public void TakeDamage(float damage)
     {
-        if (hasDied)
+        if (IsDead || damage <= 0f)
             return;
 
-        currentHealth -= damage;
-        currentHealth = Mathf.Max(currentHealth, 0f);
+        currentHealth = Mathf.Max(currentHealth - damage, 0f);
 
-        Debug.Log(
-            gameObject.name +
-            " Health: " +
-            currentHealth +
-            "/" +
-            maxHealth
-        );
+        Debug.Log(name + " Health: " + currentHealth + "/" + maxHealth);
 
-        if (IsDead)
-        {
+        if (currentHealth <= 0f)
             Die();
-        }
     }
 
+    // Called when the player dies from enemy damage.
     private void Die()
     {
         if (hasDied)
@@ -45,15 +41,53 @@ public class PlayerHealth : MonoBehaviour
 
         hasDied = true;
 
-        Debug.Log(gameObject.name + " DIED");
+        Debug.Log("PLAYER DIED | " + name);
 
-        // Tell GameManager
+        // Destroy the player's associated stronghold.
+        if (associatedStronghold != null &&
+            !associatedStronghold.IsDestroyed)
+        {
+            associatedStronghold.DestroyStronghold("Player died");
+        }
+
+        HandleDeathConsequences();
+    }
+
+    // Called when the player's stronghold is destroyed.
+    public void DieFromStrongholdDestruction()
+    {
+        if (IsDead)
+            return;
+
+        hasDied = true;
+        currentHealth = 0f;
+
+        Debug.Log(
+            "PLAYER DIED | " + name +
+            " | Reason: Associated stronghold destroyed"
+        );
+
+        HandleDeathConsequences();
+    }
+
+    private void HandleDeathConsequences()
+    {
+        // Switch to a surviving character before checking game over.
+        CharacterSwap characterSwap =
+            FindFirstObjectByType<CharacterSwap>();
+
+        if (characterSwap != null)
+        {
+            characterSwap.OnCharacterDied(this);
+        }
+
+        // Preserve the intentional two-death game-over rule.
         if (GameManager.Instance != null)
         {
             GameManager.Instance.PlayerDied();
         }
 
-        // Disable the character
+        // Disable the dead character.
         gameObject.SetActive(false);
     }
 }

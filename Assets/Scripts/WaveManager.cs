@@ -1,5 +1,7 @@
-using UnityEngine;
+
 using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
 
 public class WaveManager : MonoBehaviour
 {
@@ -16,14 +18,47 @@ public class WaveManager : MonoBehaviour
     [Header("Strongholds")]
     [SerializeField] private Stronghold[] strongholds;
 
-    private int currentWave = 0;
-    private int enemiesRemaining = 0;
+    private int currentWave;
+    private int enemiesRemaining;
+
+    private bool spawningFinished;
+    private bool waveInProgress;
+
+    // Number of living enemies assigned to each stronghold.
+    private readonly Dictionary<Stronghold, int> enemiesPerStronghold =
+        new Dictionary<Stronghold, int>();
+
+    // Strongholds that received enemies during this wave.
+    private readonly HashSet<Stronghold> assignedStrongholds =
+        new HashSet<Stronghold>();
+
+    // Prevents a stronghold from restoring more than once per wave.
+    private readonly HashSet<Stronghold> restoredStrongholds =
+        new HashSet<Stronghold>();
 
     private void Start()
     {
-        StartCoroutine(
-            StartNextWave()
-        );
+        if (enemySpawner == null)
+            enemySpawner = FindFirstObjectByType<EnemySpawner>();
+
+        if (enemySpawner == null)
+        {
+            Debug.LogError("WaveManager: EnemySpawner is missing!");
+            enabled = false;
+            return;
+        }
+
+        StartCoroutine(RunWaves());
+    }
+
+    private IEnumerator RunWaves()
+    {
+        while (true)
+        {
+            yield return StartCoroutine(StartNextWave());
+
+            yield return new WaitForSeconds(timeBetweenWaves);
+        }
     }
 
     private IEnumerator StartNextWave()
@@ -32,128 +67,165 @@ public class WaveManager : MonoBehaviour
 
         int enemyCount =
             startingEnemyCount +
-            (
-                (currentWave - 1) *
-                enemiesAddedPerWave
-            );
+            ((currentWave - 1) * enemiesAddedPerWave);
 
-        enemiesRemaining = enemyCount;
+        enemiesRemaining = 0;
+        spawningFinished = false;
+        waveInProgress = true;
+
+        enemiesPerStronghold.Clear();
+        assignedStrongholds.Clear();
+        restoredStrongholds.Clear();
 
         Debug.Log(
-            "WAVE " +
-            currentWave +
-            " STARTED | Enemies: " +
-            enemyCount
+            "WAVE " + currentWave +
+            " STARTED | Planned enemies: " + enemyCount
         );
 
-        if (enemySpawner != null)
-        {
-            enemySpawner.SpawnWave(
-                enemyCount
-            );
-        }
-        else
-        {
-            Debug.LogWarning(
-                "WaveManager: Enemy Spawner is not assigned!"
-            );
+        enemySpawner.SpawnWave(enemyCount);
 
-            yield break;
-        }
-
-        // Wait until all enemies are dead
-        while (enemiesRemaining > 0)
-        {
+        // Wait until the spawner confirms all spawning is finished.
+        while (!spawningFinished)
             yield return null;
+
+        // Handle strongholds that received no enemies.
+        // They should not receive a restoration for this wave.
+        TryRestoreEligibleStrongholds();
+
+        // Wait until all spawned enemies have been eliminated.
+        while (enemiesRemaining > 0)
+            yield return null;
+
+        // Final check in case a stronghold became eligible at wave end.
+        TryRestoreEligibleStrongholds();
+
+        waveInProgress = false;
+
+        Debug.Log("WAVE " + currentWave + " COMPLETE!");
+    }
+
+    // ==========================================
+    // SPAWNING CALLBACKS
+    // ==========================================
+
+    public void EnemySpawned(Stronghold assignedStronghold)
+    {
+        if (!waveInProgress)
+            return;
+
+        enemiesRemaining++;
+
+        if (assignedStronghold != null &&
+            !assignedStronghold.IsDestroyed)
+        {
+            if (!enemiesPerStronghold.ContainsKey(assignedStronghold))
+                enemiesPerStronghold[assignedStronghold] = 0;
+
+            enemiesPerStronghold[assignedStronghold]++;
+
+            assignedStrongholds.Add(assignedStronghold);
         }
 
         Debug.Log(
-            "WAVE " +
-            currentWave +
-            " COMPLETE!"
-        );
-
-        // Restore 50% of each Stronghold's
-        // maximum force field
-        RestoreStrongholds();
-
-        // Wait before starting next wave
-        yield return new WaitForSeconds(
-            timeBetweenWaves
-        );
-
-        StartCoroutine(
-            StartNextWave()
+            "ENEMY SPAWNED | Wave: " + currentWave +
+            " | Alive: " + enemiesRemaining +
+            " | Stronghold: " +
+            (assignedStronghold != null
+                ? assignedStronghold.name
+                : "None")
         );
     }
 
-    private void RestoreStrongholds()
+    public void SpawningFinished()
     {
-        if (strongholds == null ||
-            strongholds.Length == 0)
-        {
-            Debug.LogWarning(
-                "WaveManager: No Strongholds assigned!"
-            );
+        spawningFinished = true;
 
-            return;
+        Debug.Log(
+            "SPAWNING FINISHED | Wave " + currentWave
+        );
+
+        TryRestoreEligibleStrongholds();
+    }
+
+    // ==========================================
+    // ENEMY DEATH
+    // ==========================================
+
+    // Called by EnemyHealth when an enemy dies.
+    public void EnemyKilled(Stronghold assignedStronghold)
+    {
+        enemiesRemaining = Mathf.Max(enemiesRemaining - 1, 0);
+
+        if (assignedStronghold != null &&
+            enemiesPerStronghold.ContainsKey(assignedStronghold))
+        {
+            enemiesPerStronghold[assignedStronghold] =
+                Mathf.Max(
+                    enemiesPerStronghold[assignedStronghold] - 1,
+                    0
+                );
         }
 
         Debug.Log(
-            "===== RESTORING STRONGHOLDS ====="
+            "ENEMY KILLED | Remaining in wave: " +
+            enemiesRemaining
         );
 
-        foreach (Stronghold stronghold in strongholds)
-        {
-            if (stronghold == null)
-            {
-                Debug.LogWarning(
-                    "WaveManager: Found empty Stronghold slot."
-                );
+        TryRestoreEligibleStrongholds();
+    }
 
+    // Compatibility for any existing scripts calling EnemyKilled().
+    public void EnemyKilled()
+    {
+        enemiesRemaining = Mathf.Max(enemiesRemaining - 1, 0);
+
+        Debug.Log(
+            "ENEMY KILLED | Remaining in wave: " +
+            enemiesRemaining
+        );
+    }
+
+    // ==========================================
+    // PER-STRONGHOLD RESTORATION
+    // ==========================================
+
+    private void TryRestoreEligibleStrongholds()
+    {
+        if (!spawningFinished)
+            return;
+
+        foreach (Stronghold stronghold in assignedStrongholds)
+        {
+            if (stronghold == null ||
+                stronghold.IsDestroyed ||
+                restoredStrongholds.Contains(stronghold))
+            {
                 continue;
             }
 
-            float oldForceField =
-                stronghold.currentForceField;
+            if (!enemiesPerStronghold.ContainsKey(stronghold))
+                continue;
 
-            float restoreAmount =
-                stronghold.maxForceField * 0.5f;
+            if (enemiesPerStronghold[stronghold] > 0)
+                continue;
 
+            // All enemies assigned to this stronghold are dead.
             stronghold.RestoreForceField(
-                restoreAmount
+                stronghold.maxForceField * 0.5f
             );
+
+            restoredStrongholds.Add(stronghold);
 
             Debug.Log(
-                stronghold.name +
-                " | Force Field: " +
-                oldForceField +
-                " → " +
-                stronghold.currentForceField
+                "STRONGHOLD RESTORED | " + stronghold.name +
+                " | Wave " + currentWave
             );
         }
-
-        Debug.Log(
-            "===== RESTORATION COMPLETE ====="
-        );
     }
 
-    public void EnemyKilled()
-{
-    enemiesRemaining--;
-
-    enemiesRemaining = Mathf.Max(enemiesRemaining, 0);
-
-    Debug.Log(
-        "ENEMY KILLED | Enemies Remaining: " +
-        enemiesRemaining
-    );
-
-    if (enemiesRemaining == 0)
-    {
-        Debug.Log("ALL ENEMIES KILLED - WAVE COMPLETE");
-    }
-}
+    // ==========================================
+    // PUBLIC GETTERS
+    // ==========================================
 
     public int GetCurrentWave()
     {
@@ -163,5 +235,16 @@ public class WaveManager : MonoBehaviour
     public int GetEnemiesRemaining()
     {
         return enemiesRemaining;
+    }
+
+    public int GetEnemiesRemaining(Stronghold stronghold)
+    {
+        if (stronghold == null ||
+            !enemiesPerStronghold.ContainsKey(stronghold))
+        {
+            return 0;
+        }
+
+        return enemiesPerStronghold[stronghold];
     }
 }

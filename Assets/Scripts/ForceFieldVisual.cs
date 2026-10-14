@@ -1,3 +1,4 @@
+
 using UnityEngine;
 
 public class ForceFieldVisual : MonoBehaviour
@@ -7,10 +8,14 @@ public class ForceFieldVisual : MonoBehaviour
     [SerializeField] private Renderer fieldRenderer;
 
     [Header("Visual Settings")]
-    [SerializeField] private float maxAlpha = 0.25f;
-    [SerializeField] private float minAlpha = 0.02f;
+    [SerializeField, Range(0f, 1f)] private float maxAlpha = 0.25f;
+    [SerializeField, Range(0f, 1f)] private float minAlpha = 0.02f;
 
     private Material fieldMaterial;
+    private static readonly int BaseColor =
+        Shader.PropertyToID("_BaseColor");
+    private static readonly int ColorProperty =
+        Shader.PropertyToID("_Color");
 
     private void Awake()
     {
@@ -20,12 +25,23 @@ public class ForceFieldVisual : MonoBehaviour
         if (fieldRenderer == null)
             fieldRenderer = GetComponent<Renderer>();
 
+        if (fieldRenderer == null)
+        {
+            Debug.LogError(
+                name + ": No Renderer assigned to ForceFieldVisual.",
+                this
+            );
+            enabled = false;
+            return;
+        }
+
+        // Create a per-renderer material instance.
         fieldMaterial = fieldRenderer.material;
     }
 
     private void Update()
     {
-        if (stronghold == null)
+        if (stronghold == null || fieldMaterial == null)
             return;
 
         UpdateFieldVisual();
@@ -33,8 +49,20 @@ public class ForceFieldVisual : MonoBehaviour
 
     private void UpdateFieldVisual()
     {
-        float strengthPercent =
-            stronghold.currentForceField / stronghold.maxForceField;
+        float strengthPercent = stronghold.maxForceField > 0f
+            ? Mathf.Clamp01(
+                stronghold.currentForceField /
+                stronghold.maxForceField
+            )
+            : 0f;
+
+        bool hasStrength =
+            strengthPercent > 0f && !stronghold.IsDestroyed;
+
+        fieldRenderer.enabled = hasStrength;
+
+        if (!hasStrength)
+            return;
 
         float alpha = Mathf.Lerp(
             minAlpha,
@@ -42,17 +70,23 @@ public class ForceFieldVisual : MonoBehaviour
             strengthPercent
         );
 
-        Color color = fieldMaterial.color;
-        color.a = alpha;
-        fieldMaterial.color = color;
+        SetAlpha(BaseColor, alpha);
+        SetAlpha(ColorProperty, alpha);
+    }
 
-        if (strengthPercent <= 0f)
-        {
-            fieldRenderer.enabled = false;
-        }
-        else
-        {
-            fieldRenderer.enabled = true;
-        }
+    private void SetAlpha(int property, float alpha)
+    {
+        if (!fieldMaterial.HasProperty(property))
+            return;
+
+        Color color = fieldMaterial.GetColor(property);
+        color.a = alpha;
+        fieldMaterial.SetColor(property, color);
+    }
+
+    private void OnDestroy()
+    {
+        if (fieldMaterial != null)
+            Destroy(fieldMaterial);
     }
 }

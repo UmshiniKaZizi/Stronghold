@@ -408,4 +408,31 @@ public class CharacterSwap : MonoBehaviour
             character.name
         );
     }
+    
+public void OnCharacterDied(PlayerHealth deadCharacter)
+{
+    if (deadCharacter == null)
+        return;
+
+    // Only switch automatically if the active character died.
+    if (character != deadCharacter.transform)
+        return;
+
+    Debug.Log("CharacterSwap: Active character died. Finding a survivor.");
+
+    int nextAliveCharacter = FindNextAliveCharacter(
+        whichCharacter + 1,
+        1
+    );
+
+    if (nextAliveCharacter == -1)
+    {
+        Debug.LogWarning("CharacterSwap: No surviving characters remain.");
+        return;
+    }
+
+    whichCharacter = nextAliveCharacter;
+    Swap();
+}
+
 }

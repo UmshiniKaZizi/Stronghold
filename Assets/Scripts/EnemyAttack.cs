@@ -4,35 +4,48 @@ using System.Collections;
 
 public class EnemyAttack : MonoBehaviour
 {
-    [Header("Target")]
-    [SerializeField] private Stronghold targetStronghold;
+    public enum AttackType
+    {
+        None,
+        ForceField,
+        Object,
+        Player
+    }
 
     [Header("Attack Settings")]
     [SerializeField] private float attackDamage = 10f;
     [SerializeField] private float attackInterval = 1f;
-    [SerializeField] private float attackRange = 8f;
+    [SerializeField] private float attackRange = 2.5f;
 
-    [Header("Attack Movement")]
-    [SerializeField] private float lungeDistance = 1.0f;
-    [SerializeField] private float lungeSpeed = 8f;
-    [SerializeField] private float returnSpeed = 6f;
+    [Header("Target Selection")]
+    [SerializeField] private float playerTargetWeight = 1f;
+    [SerializeField] private float objectTargetWeight = 1f;
 
     [Header("Animation")]
     [SerializeField] private Animator animator;
-    [SerializeField] private float attackParameterDuration = 0.2f;
+    [SerializeField] private string forceFieldAttackTrigger = "Attack1";
+    [SerializeField] private string objectAttackTrigger = "Attack1";
+    [SerializeField] private string playerAttackTrigger = "Attack2";
+    [SerializeField] private float attackAnimationDuration = 1f;
+
+    [Header("Debug")]
+    [SerializeField] private bool showDebugMessages = true;
+
+    private EnemyMovement enemyMovement;
+    private Stronghold targetStronghold;
+
+    private AttackType currentAttackType = AttackType.None;
+    private StrongholdObject attackObject;
+    private PlayerHealth attackPlayer;
+    private Transform currentAttackTarget;
 
     private float attackTimer;
-    private EnemyMovement enemyMovement;
     private bool isAttacking;
+    private bool damageApplied;
+    private Coroutine attackCoroutine;
 
-    private Coroutine attack1ResetCoroutine;
-    private Coroutine attack2ResetCoroutine;
-
-    private static readonly int Attack1Hash =
-        Animator.StringToHash("Attack1");
-
-    private static readonly int Attack2Hash =
-        Animator.StringToHash("Attack2");
+    public bool IsAttacking => isAttacking;
+    public Stronghold TargetStronghold => targetStronghold;
 
     private void Awake()
     {
@@ -41,354 +54,371 @@ public class EnemyAttack : MonoBehaviour
         if (animator == null)
             animator = GetComponentInChildren<Animator>();
 
-        if (enemyMovement == null)
-        {
-            Debug.LogError(
-                gameObject.name +
-                " is missing EnemyMovement!"
-            );
-        }
+        attackTimer = 0f;
 
-        if (animator == null)
-        {
-            Debug.LogWarning(
-                gameObject.name +
-                " has no Animator assigned or found in children."
-            );
-        }
+        if (showDebugMessages)
+            Debug.Log(name + " | EnemyAttack initialized.");
     }
 
     private void Update()
     {
-        if (targetStronghold == null)
+        if (targetStronghold == null || targetStronghold.IsDestroyed)
+            return;
+
+        if (isAttacking)
             return;
 
         attackTimer -= Time.deltaTime;
 
-        // Attack the force field while it is intact.
+        if (attackTimer > 0f)
+            return;
+
+        // The force field must be destroyed before the stronghold
+        // objects and players become valid attack targets.
         if (!targetStronghold.IsBreached)
         {
-            AttackForceField();
+            attackObject = null;
+            attackPlayer = null;
+            currentAttackTarget = null;
+
+            TryAttackForceField();
             return;
         }
 
-        // Do not start another player attack during a lunge.
-        if (!isAttacking)
+        // Keep a valid target instead of selecting a new one every frame.
+        if (!IsCurrentTargetValid())
+            ChoosePostBreachTarget();
+
+        // The enemy may already be moving towards its selected target.
+        if (currentAttackTarget == null)
+            return;
+
+        if (!IsInRange(currentAttackTarget))
+            return;
+
+        if (currentAttackType == AttackType.Player &&
+            attackPlayer != null)
         {
-            AttackCharacter();
+            BeginAttack(AttackType.Player, attackPlayer.transform);
+            TriggerAnimation(playerAttackTrigger);
+        }
+        else if (currentAttackType == AttackType.Object &&
+                 attackObject != null)
+        {
+            BeginAttack(AttackType.Object, attackObject.transform);
+            TriggerAnimation(objectAttackTrigger);
         }
     }
-
-    // ==========================================
-    // FORCE FIELD ATTACK
-    // ==========================================
-
-    private void AttackForceField()
-    {
-        if (targetStronghold == null)
-            return;
-
-        if (targetStronghold.IsBreached)
-            return;
-
-        if (enemyMovement == null)
-            return;
-
-        Transform target = enemyMovement.CurrentTarget;
-
-        if (target == null)
-            return;
-
-        float distance = Vector3.Distance(
-            transform.position,
-            target.position
-        );
-
-        if (distance > attackRange)
-            return;
-
-        if (attackTimer > 0f)
-            return;
-
-        // Play Attack1 for a force-field attack.
-        PlayAttackAnimation(Attack1Hash);
-
-        Debug.Log(
-            "FORCE FIELD ATTACK | " +
-            gameObject.name +
-            " → " +
-            targetStronghold.name
-        );
-
-        targetStronghold.DamageForceField(attackDamage);
-
-        attackTimer = attackInterval;
-    }
-
-    // ==========================================
-    // CHARACTER ATTACK
-    // ==========================================
-
-    private void AttackCharacter()
-    {
-        if (enemyMovement == null)
-            return;
-
-        Transform target = enemyMovement.CurrentTarget;
-
-        if (target == null)
-            return;
-
-        PlayerHealth playerHealth = GetPlayerHealth(target);
-
-        if (playerHealth == null)
-        {
-            Debug.LogWarning(
-                gameObject.name +
-                " cannot find PlayerHealth on " +
-                target.name
-            );
-
-            return;
-        }
-
-        if (playerHealth.IsDead)
-            return;
-
-        float distance = Vector3.Distance(
-            transform.position,
-            target.position
-        );
-
-        if (distance > attackRange)
-            return;
-
-        if (attackTimer > 0f)
-            return;
-
-        StartCoroutine(
-            LungeAttack(target, playerHealth)
-        );
-    }
-
-    private PlayerHealth GetPlayerHealth(Transform character)
-    {
-        if (character == null)
-            return null;
-
-        PlayerHealth health =
-            character.GetComponent<PlayerHealth>();
-
-        if (health == null)
-            health = character.GetComponentInParent<PlayerHealth>();
-
-        if (health == null)
-            health = character.GetComponentInChildren<PlayerHealth>();
-
-        return health;
-    }
-
-    // ==========================================
-    // LUNGE ATTACK
-    // ==========================================
-
-    private IEnumerator LungeAttack(
-        Transform target,
-        PlayerHealth playerHealth)
-    {
-        isAttacking = true;
-
-        // Play Attack2 when attacking a player.
-        PlayAttackAnimation(Attack2Hash);
-
-        // Stop navigation during the lunge.
-        if (enemyMovement != null &&
-            enemyMovement.Agent != null)
-        {
-            enemyMovement.Agent.isStopped = true;
-        }
-
-        // Face the player.
-        Vector3 direction =
-            target.position - transform.position;
-
-        direction.y = 0f;
-
-        if (direction.sqrMagnitude > 0.001f)
-        {
-            transform.rotation =
-                Quaternion.LookRotation(direction);
-        }
-
-        Vector3 startPosition = transform.position;
-
-        Vector3 lungePosition =
-            startPosition + transform.forward * lungeDistance;
-
-        // Move forward.
-        while (Vector3.Distance(
-                   transform.position,
-                   lungePosition) > 0.05f)
-        {
-            transform.position = Vector3.MoveTowards(
-                transform.position,
-                lungePosition,
-                lungeSpeed * Time.deltaTime
-            );
-
-            yield return null;
-        }
-
-        // Deal damage if the player is still alive
-        // and remains within reach.
-        if (target != null &&
-            playerHealth != null &&
-            !playerHealth.IsDead)
-        {
-            float distance = Vector3.Distance(
-                transform.position,
-                target.position
-            );
-
-            if (distance <= attackRange + lungeDistance)
-            {
-                playerHealth.TakeDamage(attackDamage);
-
-                Debug.Log(
-                    "PLAYER ATTACK | " +
-                    gameObject.name +
-                    " → " +
-                    playerHealth.gameObject.name +
-                    " | Damage: " +
-                    attackDamage
-                );
-            }
-        }
-
-        // Return to the starting position.
-        while (Vector3.Distance(
-                   transform.position,
-                   startPosition) > 0.05f)
-        {
-            transform.position = Vector3.MoveTowards(
-                transform.position,
-                startPosition,
-                returnSpeed * Time.deltaTime
-            );
-
-            yield return null;
-        }
-
-        transform.position = startPosition;
-
-        // Reset the attack cooldown.
-        attackTimer = attackInterval;
-        isAttacking = false;
-
-        // Give navigation control back.
-        if (enemyMovement != null &&
-            enemyMovement.Agent != null)
-        {
-            enemyMovement.Agent.isStopped = false;
-        }
-    }
-
-    // ==========================================
-    // ANIMATION
-    // ==========================================
-
-    private void PlayAttackAnimation(int parameterHash)
-    {
-        if (animator == null)
-            return;
-
-        // Restart the reset timer if this parameter
-        // is already active.
-        if (parameterHash == Attack1Hash)
-        {
-            if (attack1ResetCoroutine != null)
-                StopCoroutine(attack1ResetCoroutine);
-
-            animator.SetBool(Attack1Hash, true);
-
-            attack1ResetCoroutine = StartCoroutine(
-                ResetAttackParameter(
-                    Attack1Hash,
-                    true
-                )
-            );
-        }
-        else if (parameterHash == Attack2Hash)
-        {
-            if (attack2ResetCoroutine != null)
-                StopCoroutine(attack2ResetCoroutine);
-
-            animator.SetBool(Attack2Hash, true);
-
-            attack2ResetCoroutine = StartCoroutine(
-                ResetAttackParameter(
-                    Attack2Hash,
-                    false
-                )
-            );
-        }
-    }
-
-    private IEnumerator ResetAttackParameter(
-        int parameterHash,
-        bool isAttack1)
-    {
-        yield return new WaitForSeconds(
-            attackParameterDuration
-        );
-
-        if (animator != null)
-            animator.SetBool(parameterHash, false);
-
-        if (isAttack1)
-            attack1ResetCoroutine = null;
-        else
-            attack2ResetCoroutine = null;
-    }
-
-    // ==========================================
-    // SET STRONGHOLD TARGET
-    // ==========================================
 
     public void SetTargetStronghold(Stronghold stronghold)
     {
+        if (targetStronghold == stronghold)
+            return;
+
         targetStronghold = stronghold;
 
-        if (targetStronghold == null)
-        {
-            Debug.LogWarning(
-                gameObject.name +
-                ": Target Stronghold is NULL!"
-            );
+        attackObject = null;
+        attackPlayer = null;
+        currentAttackTarget = null;
+        currentAttackType = AttackType.None;
+        attackTimer = 0f;
 
-            if (enemyMovement != null)
+        if (enemyMovement != null)
+        {
+            if (stronghold != null)
+                enemyMovement.SetTarget(stronghold);
+            else
                 enemyMovement.ClearTarget();
+        }
+
+        if (showDebugMessages)
+        {
+            string targetName = stronghold != null
+                ? stronghold.name
+                : "None";
+
+            Debug.Log(name + " | Assigned target stronghold: " + targetName);
+        }
+    }
+
+    private void TryAttackForceField()
+    {
+        if (targetStronghold == null ||
+            targetStronghold.IsDestroyed ||
+            targetStronghold.IsBreached)
+            return;
+
+        Transform fieldTarget =
+            targetStronghold.transform.Find("EnemyTarget");
+
+        if (fieldTarget == null)
+            fieldTarget = targetStronghold.transform;
+
+        if (!IsInRange(fieldTarget))
+            return;
+
+        BeginAttack(AttackType.ForceField, fieldTarget);
+        TriggerAnimation(forceFieldAttackTrigger);
+    }
+
+    private void ChoosePostBreachTarget()
+    {
+        if (targetStronghold == null || targetStronghold.IsDestroyed)
+            return;
+
+        StrongholdObject closestObject =
+            targetStronghold.GetClosestAvailableObject(transform.position);
+
+        PlayerHealth closestPlayer = FindClosestLivingPlayer();
+
+        bool hasObject = closestObject != null;
+        bool hasPlayer = closestPlayer != null;
+
+        if (!hasObject && !hasPlayer)
+            return;
+
+        bool choosePlayer;
+
+        if (hasObject && hasPlayer)
+        {
+            float playerWeight = Mathf.Max(0f, playerTargetWeight);
+            float objectWeight = Mathf.Max(0f, objectTargetWeight);
+            float totalWeight = playerWeight + objectWeight;
+
+            if (totalWeight <= 0f)
+            {
+                choosePlayer = Random.value < 0.5f;
+            }
+            else
+            {
+                choosePlayer = Random.value <
+                    playerWeight / totalWeight;
+            }
+        }
+        else
+        {
+            choosePlayer = hasPlayer;
+        }
+
+        if (choosePlayer)
+            SetPlayerTarget(closestPlayer);
+        else
+            SetObjectTarget(closestObject);
+    }
+
+    private void SetObjectTarget(StrongholdObject targetObject)
+    {
+        if (targetObject == null || targetObject.IsDestroyed)
+            return;
+
+        attackObject = targetObject;
+        attackPlayer = null;
+        currentAttackTarget = targetObject.transform;
+        currentAttackType = AttackType.Object;
+
+        if (enemyMovement != null)
+            enemyMovement.SetTargetObject(targetObject);
+
+        if (showDebugMessages)
+            Debug.Log(name + " | Selected object target: " + targetObject.name);
+    }
+
+    private void SetPlayerTarget(PlayerHealth player)
+    {
+        if (player == null || player.IsDead)
+            return;
+
+        attackPlayer = player;
+        attackObject = null;
+        currentAttackTarget = player.transform;
+        currentAttackType = AttackType.Player;
+
+        if (enemyMovement != null)
+            enemyMovement.SetTargetPlayer(player.transform);
+
+        if (showDebugMessages)
+            Debug.Log(name + " | Selected player target: " + player.name);
+    }
+
+    private bool IsCurrentTargetValid()
+    {
+        if (currentAttackTarget == null)
+            return false;
+
+        if (currentAttackType == AttackType.Object)
+        {
+            return attackObject != null &&
+                   !attackObject.IsDestroyed;
+        }
+
+        if (currentAttackType == AttackType.Player)
+        {
+            return attackPlayer != null &&
+                   !attackPlayer.IsDead;
+        }
+
+        return false;
+    }
+
+    private void BeginAttack(AttackType attackType, Transform attackTarget)
+    {
+        if (isAttacking || attackTarget == null)
+            return;
+
+        isAttacking = true;
+        damageApplied = false;
+
+        currentAttackType = attackType;
+        currentAttackTarget = attackTarget;
+
+        if (enemyMovement != null &&
+            enemyMovement.Agent != null &&
+            enemyMovement.Agent.isOnNavMesh)
+        {
+            enemyMovement.StopMoving();
+        }
+
+        FaceTarget(attackTarget);
+        ApplyDamageImmediately();
+
+        attackCoroutine = StartCoroutine(FinishAttackAfterDelay());
+    }
+
+    private void ApplyDamageImmediately()
+    {
+        if (damageApplied)
+            return;
+
+        damageApplied = true;
+
+        switch (currentAttackType)
+        {
+            case AttackType.ForceField:
+                if (targetStronghold != null &&
+                    !targetStronghold.IsDestroyed)
+                {
+                    targetStronghold.DamageForceField(attackDamage);
+                }
+                break;
+
+            case AttackType.Object:
+                if (attackObject != null &&
+                    !attackObject.IsDestroyed)
+                {
+                    attackObject.TakeDamage(attackDamage);
+                }
+                break;
+
+            case AttackType.Player:
+                if (attackPlayer != null && !attackPlayer.IsDead)
+                {
+                    attackPlayer.TakeDamage(attackDamage);
+                }
+                break;
+        }
+    }
+
+    // Kept for existing Animation Events.
+    // Damage is handled by BeginAttack().
+    public void ApplyAttackDamage()
+    {
+    }
+
+    private void TriggerAnimation(string triggerName)
+    {
+        if (animator == null)
+        {
+            if (showDebugMessages)
+                Debug.LogWarning(name + " | No Animator assigned.");
 
             return;
         }
 
-        Debug.Log(
-            "TARGET ASSIGNED | " +
-            gameObject.name +
-            " → " +
-            targetStronghold.name
-        );
+        if (string.IsNullOrWhiteSpace(triggerName))
+            return;
 
-        if (enemyMovement != null)
-            enemyMovement.SetTarget(targetStronghold);
+        animator.SetTrigger(triggerName);
     }
 
-    // ==========================================
-    // CURRENT TARGET
-    // ==========================================
-
-    public Stronghold CurrentTargetStronghold
+    private IEnumerator FinishAttackAfterDelay()
     {
-        get { return targetStronghold; }
+        yield return new WaitForSeconds(attackAnimationDuration);
+
+        isAttacking = false;
+        currentAttackType = AttackType.None;
+        attackCoroutine = null;
+
+        attackTimer = attackInterval;
+
+        if (enemyMovement != null)
+            enemyMovement.ResumeMoving();
+
+        // Keep the selected target if it remains valid.
+        // A new target is chosen only when necessary.
+        if (!IsCurrentTargetValid())
+        {
+            attackObject = null;
+            attackPlayer = null;
+            currentAttackTarget = null;
+        }
+    }
+
+    private bool IsInRange(Transform target)
+    {
+        if (target == null)
+            return false;
+
+        return Vector3.Distance(
+            transform.position,
+            target.position
+        ) <= attackRange;
+    }
+
+    private void FaceTarget(Transform target)
+    {
+        if (target == null)
+            return;
+
+        Vector3 direction = target.position - transform.position;
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude <= 0.001f)
+            return;
+
+        transform.rotation = Quaternion.LookRotation(direction);
+    }
+
+    private PlayerHealth FindClosestLivingPlayer()
+    {
+        GameObject[] players =
+            GameObject.FindGameObjectsWithTag("Player");
+
+        PlayerHealth closestPlayer = null;
+        float closestDistance = Mathf.Infinity;
+
+        foreach (GameObject playerObject in players)
+        {
+            if (playerObject == null)
+                continue;
+
+            PlayerHealth health =
+                playerObject.GetComponent<PlayerHealth>();
+
+            if (health == null || health.IsDead)
+                continue;
+
+            float distance = Vector3.Distance(
+                transform.position,
+                playerObject.transform.position
+            );
+
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestPlayer = health;
+            }
+        }
+
+        return closestPlayer;
     }
 }

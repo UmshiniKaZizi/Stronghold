@@ -12,19 +12,30 @@ public class EnemyMovement : MonoBehaviour
 
     [Header("Movement")]
     [SerializeField] private float stoppingDistance = 1.5f;
+    [SerializeField] private float destinationUpdateInterval = 0.25f;
 
     [Header("Animation")]
     [SerializeField] private Animator animator;
     [SerializeField] private float movementThreshold = 0.1f;
 
-    private NavMeshAgent agent;
+    [Header("NavMesh Recovery")]
+    [SerializeField] private float navMeshSearchRadius = 3f;
+    [SerializeField] private bool snapToNavMeshOnStart = true;
 
-    private static readonly int SpeedHash =
-        Animator.StringToHash("Speed");
+    private NavMeshAgent agent;
+    private StrongholdObject targetObject;
+
+    private float nextDestinationUpdate;
+    private bool movementPaused;
+    private bool reportedInvalidAgent;
 
     public Transform CurrentTarget => target;
     public Stronghold CurrentStronghold => targetStronghold;
+    public StrongholdObject CurrentTargetObject => targetObject;
     public NavMeshAgent Agent => agent;
+
+    private static readonly int SpeedHash =
+        Animator.StringToHash("Speed");
 
     private void Awake()
     {
@@ -36,17 +47,17 @@ public class EnemyMovement : MonoBehaviour
         if (agent == null)
         {
             Debug.LogError(
-                gameObject.name +
-                " is missing a NavMeshAgent!"
-            );
+                name + " is missing a NavMeshAgent!", this);
+            enabled = false;
+            return;
         }
+
+        agent.stoppingDistance = stoppingDistance;
 
         if (animator == null)
         {
             Debug.LogWarning(
-                gameObject.name +
-                " has no Animator assigned or found in children."
-            );
+                name + " has no Animator assigned.", this);
         }
     }
 
@@ -55,13 +66,38 @@ public class EnemyMovement : MonoBehaviour
         if (agent == null)
             return;
 
-        agent.stoppingDistance = stoppingDistance;
+        // Spawned enemies may appear slightly off the NavMesh.
+        if (!agent.isOnNavMesh && snapToNavMeshOnStart)
+        {
+            if (NavMesh.SamplePosition(
+                transform.position,
+                out NavMeshHit hit,
+                navMeshSearchRadius,
+                NavMesh.AllAreas))
+            {
+                if (agent.Warp(hit.position))
+                {
+                    Debug.Log(
+                        name + " snapped to NavMesh at " +
+                        hit.position, this);
+                }
+            }
+        }
+
+        if (!agent.isOnNavMesh)
+        {
+            Debug.LogError(
+                name + " is NOT on the NavMesh. Position: " +
+                transform.position, this);
+            reportedInvalidAgent = true;
+            return;
+        }
+
         agent.isStopped = false;
 
-        Debug.Log(
-            gameObject.name +
-            " EnemyMovement started."
-        );
+        // Set the initial destination after the agent is placed.
+        if (target != null)
+    UpdateDestination(target);
     }
 
     private void Update()
@@ -69,257 +105,234 @@ public class EnemyMovement : MonoBehaviour
         if (agent == null)
             return;
 
-        if (targetStronghold == null)
-            return;
-
-        // Move toward the stronghold until it is breached.
-        if (!targetStronghold.IsBreached)
+        if (!agent.isOnNavMesh)
         {
-            MoveToStronghold();
+            if (!reportedInvalidAgent)
+            {
+                Debug.LogError(
+                    name + " left the NavMesh. Position: " +
+                    transform.position, this);
+                reportedInvalidAgent = true;
+            }
+
             return;
         }
 
-        // After the breach, chase a living character.
-        ChaseLivingCharacter();
+        reportedInvalidAgent = false;
+
+        // EnemyAttack controls when movement is paused.
+        // Never restart movement while an attack is in progress.
+        if (movementPaused)
+            return;
+
+        if (targetStronghold == null)
+            return;
+
+        if (targetStronghold.IsDestroyed)
+        {
+            StopMoving();
+            return;
+        }
+
+        if (!targetStronghold.IsBreached)
+        {
+            targetObject = null;
+
+            Transform fieldTarget =
+                targetStronghold.transform.Find("EnemyTarget");
+
+            if (fieldTarget == null)
+            {
+                StopMoving();
+                return;
+            }
+
+            UpdateDestination(fieldTarget);
+            return;
+        }
+
+        // EnemyAttack chooses the player/object target.
+        if (target == null)
+        {
+            StopMoving();
+            return;
+        }
+
+        // If the object target has been destroyed, don't keep
+        // following its Transform. EnemyAttack can choose another.
+        if (targetObject != null && targetObject.IsDestroyed)
+        {
+            targetObject = null;
+            target = null;
+            StopMoving();
+            return;
+        }
+
+        UpdateDestination(target);
+    }
+
+    private void UpdateDestination(Transform destination)
+    {
+        if (destination == null ||
+            agent == null ||
+            !agent.isOnNavMesh ||
+            movementPaused)
+            return;
+
+        if (Time.time < nextDestinationUpdate)
+            return;
+
+        nextDestinationUpdate =
+            Time.time + destinationUpdateInterval;
+
+        agent.stoppingDistance = stoppingDistance;
+
+        if (!agent.hasPath ||
+            Vector3.Distance(
+                agent.destination,
+                destination.position) > 0.5f)
+        {
+            bool accepted =
+                agent.SetDestination(destination.position);
+
+            if (!accepted)
+            {
+                Debug.LogWarning(
+                    name + " could not calculate a path to " +
+                    destination.name, this);
+                return;
+            }
+        }
+
+        if (agent.isStopped)
+            agent.isStopped = false;
     }
 
     private void LateUpdate()
     {
-        UpdateLocomotionAnimation();
-    }
-
-    private void UpdateLocomotionAnimation()
-    {
         if (animator == null || agent == null)
             return;
 
-        // Ignore movement while navigation is stopped.
         float movementSpeed = 0f;
 
-        if (agent.isOnNavMesh && !agent.isStopped)
+        if (agent.isOnNavMesh &&
+            !agent.isStopped &&
+            !movementPaused)
         {
             movementSpeed = agent.velocity.magnitude;
         }
 
-        // This Blend Tree uses 0 for Idle and 1 for Run.
-        float animationSpeed =
-            movementSpeed > movementThreshold ? 1f : 0f;
-
-        animator.SetFloat(SpeedHash, animationSpeed);
+        animator.SetFloat(
+            SpeedHash,
+            movementSpeed > movementThreshold ? 1f : 0f);
     }
 
-    private void MoveToStronghold()
-    {
-        if (target == null)
-        {
-            Debug.LogWarning(
-                gameObject.name +
-                " has a Stronghold target but no EnemyTarget."
-            );
-
-            agent.isStopped = true;
-            return;
-        }
-
-        if (!agent.isOnNavMesh)
-        {
-            Debug.LogWarning(
-                gameObject.name +
-                " is NOT on the NavMesh!"
-            );
-
-            return;
-        }
-
-        agent.isStopped = false;
-        agent.stoppingDistance = stoppingDistance;
-
-        agent.SetDestination(target.position);
-    }
-
-    private void ChaseLivingCharacter()
-    {
-        if (!HasValidTarget())
-        {
-            Debug.Log(
-                gameObject.name +
-                " target is dead or invalid. Finding new target..."
-            );
-
-            FindLivingCharacter();
-        }
-
-        if (target == null)
-        {
-            agent.isStopped = true;
-            return;
-        }
-
-        if (!agent.isOnNavMesh)
-            return;
-
-        agent.isStopped = false;
-        agent.stoppingDistance = stoppingDistance;
-
-        agent.SetDestination(target.position);
-    }
-
-    private bool HasValidTarget()
-    {
-        if (target == null)
-            return false;
-
-        PlayerHealth health = GetPlayerHealth(target);
-
-        if (health == null)
-        {
-            Debug.LogWarning(
-                gameObject.name +
-                " could not find PlayerHealth on " +
-                target.name
-            );
-
-            return false;
-        }
-
-        // Characters remain active when control switches.
-        if (health.IsDead)
-            return false;
-
-        return true;
-    }
-
-    private void FindLivingCharacter()
-    {
-        GameObject[] players =
-            GameObject.FindGameObjectsWithTag("Player");
-
-        Transform closestCharacter = null;
-        float closestDistance = Mathf.Infinity;
-
-        foreach (GameObject player in players)
-        {
-            if (player == null)
-                continue;
-
-            PlayerHealth health =
-                GetPlayerHealth(player.transform);
-
-            if (health == null || health.IsDead)
-                continue;
-
-            float distance = Vector3.Distance(
-                transform.position,
-                player.transform.position
-            );
-
-            if (distance < closestDistance)
-            {
-                closestDistance = distance;
-                closestCharacter = player.transform;
-            }
-        }
-
-        if (closestCharacter == null)
-        {
-            target = null;
-
-            Debug.Log(
-                gameObject.name +
-                " could not find a living character."
-            );
-
-            return;
-        }
-
-        target = closestCharacter;
-
-        Debug.Log(
-            "NEW TARGET | " +
-            gameObject.name +
-            " → " +
-            target.name
-        );
-    }
-
-    private PlayerHealth GetPlayerHealth(Transform character)
-    {
-        if (character == null)
-            return null;
-
-        PlayerHealth health =
-            character.GetComponent<PlayerHealth>();
-
-        if (health == null)
-            health = character.GetComponentInParent<PlayerHealth>();
-
-        if (health == null)
-            health = character.GetComponentInChildren<PlayerHealth>();
-
-        return health;
-    }
+    // ==========================================
+    // TARGET CONTROL
+    // ==========================================
 
     public void SetTarget(Stronghold stronghold)
     {
         targetStronghold = stronghold;
+        targetObject = null;
+        target = null;
 
         if (stronghold == null)
         {
-            target = null;
-
+            StopMoving();
             Debug.LogWarning(
-                gameObject.name +
-                ": Stronghold target is NULL."
-            );
-
+                name + ": Stronghold target is null.", this);
             return;
         }
 
-        Transform enemyTarget =
+        Transform fieldTarget =
             stronghold.transform.Find("EnemyTarget");
 
-        if (enemyTarget == null)
+        if (fieldTarget == null)
         {
-            target = null;
-
+            StopMoving();
             Debug.LogError(
-                gameObject.name +
-                ": Could NOT find EnemyTarget under " +
-                stronghold.name
-            );
-
+                "EnemyTarget not found under " +
+                stronghold.name, stronghold);
             return;
         }
 
-        target = enemyTarget;
+        target = fieldTarget;
+        movementPaused = false;
+
+        if (agent != null && agent.isOnNavMesh)
+        {
+            agent.isStopped = false;
+            agent.SetDestination(fieldTarget.position);
+            nextDestinationUpdate =
+                Time.time + destinationUpdateInterval;
+        }
 
         Debug.Log(
             "MOVEMENT TARGET ASSIGNED | " +
-            gameObject.name +
-            " → " +
-            stronghold.name +
-            " | EnemyTarget: " +
-            target.name
-        );
+            name + " -> " + stronghold.name, this);
+    }
 
-        if (agent != null && !agent.isOnNavMesh)
-        {
-            Debug.LogWarning(
-                gameObject.name +
-                " is not currently on a NavMesh."
-            );
-        }
+    public void SetTargetObject(StrongholdObject obj)
+    {
+        if (obj == null || obj.IsDestroyed)
+            return;
+
+        targetObject = obj;
+        target = obj.transform;
+        movementPaused = false;
+
+        Debug.Log(
+            "OBJECT TARGET ASSIGNED | " +
+            name + " -> " + obj.name, this);
+
+        UpdateDestination(target);
+    }
+
+    public void SetTargetPlayer(Transform player)
+    {
+        if (player == null)
+            return;
+
+        targetObject = null;
+        target = player;
+        movementPaused = false;
+
+        Debug.Log(
+            "PLAYER TARGET ASSIGNED | " +
+            name + " -> " + player.name, this);
+
+        UpdateDestination(target);
     }
 
     public void ClearTarget()
     {
         target = null;
+        targetObject = null;
         targetStronghold = null;
 
-        if (agent != null && agent.isOnNavMesh)
-        {
-            agent.isStopped = true;
-            agent.ResetPath();
-        }
+        StopMoving();
+    }
+
+    public void StopMoving()
+    {
+        movementPaused = true;
+
+        if (agent == null || !agent.isOnNavMesh)
+            return;
+
+        agent.isStopped = true;
+        agent.ResetPath();
+    }
+
+    public void ResumeMoving()
+    {
+        movementPaused = false;
+
+        if (agent == null || !agent.isOnNavMesh)
+            return;
+
+        agent.isStopped = false;
+        nextDestinationUpdate = 0f;
     }
 }
