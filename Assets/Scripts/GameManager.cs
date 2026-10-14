@@ -5,7 +5,12 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
 
+    [Header("Start Menu")]
+    [SerializeField] private GameObject startMenuPanel;
+    [SerializeField] private GameObject menuCamera;
+
     [Header("Game Over")]
+    [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private int deathsRequiredForGameOver = 2;
 
     private int deadPlayers = 0;
@@ -22,6 +27,41 @@ public class GameManager : MonoBehaviour
         }
 
         Instance = this;
+    }
+
+    private void Start()
+    {
+        // Show start screen
+        startMenuPanel.SetActive(true);
+        gameOverPanel.SetActive(false);
+
+        // Show overview camera
+        menuCamera.SetActive(true);
+
+        // Unlock mouse for menu
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        // PAUSE GAMEPLAY
+        Time.timeScale = 0f;
+    }
+
+    public void StartGame()
+    {
+        Debug.Log("START BUTTON PRESSED");
+
+        // Hide start screen
+        startMenuPanel.SetActive(false);
+
+        // Turn off overview camera
+        menuCamera.SetActive(false);
+
+        // Resume game
+        Time.timeScale = 1f;
+
+        // Lock mouse for gameplay
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
 
     public void PlayerDied()
@@ -46,13 +86,42 @@ public class GameManager : MonoBehaviour
 
     private void GameOver()
     {
+        if (gameOver)
+            return;
+
         gameOver = true;
 
-        Debug.Log("GAME OVER - TWO PLAYERS HAVE DIED!");
+        Debug.Log("GAME OVER");
 
-        // Stop gameplay
+        // Overview camera
+        menuCamera.SetActive(true);
+
+        // Show Game Over screen
+        gameOverPanel.SetActive(true);
+
+        // Unlock mouse
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        // Freeze game
         Time.timeScale = 0f;
+    }
 
-        // Add Game Over UI here later
+    public void RestartGame()
+    {
+        Time.timeScale = 1f;
+
+        SceneManager.LoadScene(
+            SceneManager.GetActiveScene().buildIndex
+        );
+    }
+
+    public void ExitGame()
+    {
+        Time.timeScale = 1f;
+
+        Application.Quit();
+
+        Debug.Log("EXIT GAME");
     }
 }

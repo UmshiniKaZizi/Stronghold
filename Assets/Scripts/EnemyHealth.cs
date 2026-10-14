@@ -1,9 +1,17 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class EnemyHealth : MonoBehaviour
 {
     [Header("Health")]
     [SerializeField] private float maxHealth = 100f;
+
+    [Header("Health Bar")]
+    [SerializeField] private Image healthFill;
+
+    [Header("Animation")]
+    [SerializeField] private Animator animator;
+    [SerializeField] private float deathDelay = 2f;
 
     private float currentHealth;
     private WaveManager waveManager;
@@ -15,8 +23,9 @@ public class EnemyHealth : MonoBehaviour
     {
         currentHealth = maxHealth;
 
-        waveManager =
-            FindFirstObjectByType<WaveManager>();
+        waveManager = FindFirstObjectByType<WaveManager>();
+
+        UpdateHealthBar();
     }
 
     public void TakeDamage(float damage)
@@ -26,11 +35,9 @@ public class EnemyHealth : MonoBehaviour
 
         currentHealth -= damage;
 
-        currentHealth =
-            Mathf.Max(
-                currentHealth,
-                0f
-            );
+        currentHealth = Mathf.Max(currentHealth, 0f);
+
+        UpdateHealthBar();
 
         Debug.Log(
             "Enemy Health: " +
@@ -43,17 +50,38 @@ public class EnemyHealth : MonoBehaviour
         {
             Die();
         }
+        else
+        {
+            if (animator != null)
+            {
+                animator.SetTrigger("Hit");
+            }
+        }
+    }
+
+    private void UpdateHealthBar()
+    {
+        if (healthFill != null)
+        {
+            healthFill.fillAmount =
+                currentHealth / maxHealth;
+        }
     }
 
     private void Die()
-{
-    Debug.Log("Enemy Died");
-
-    if (waveManager != null)
     {
-        waveManager.EnemyKilled();
-    }
+        Debug.Log("Enemy Died");
 
-    Destroy(gameObject);
-}
+        if (animator != null)
+        {
+            animator.SetTrigger("Dead");
+        }
+
+        if (waveManager != null)
+        {
+            waveManager.EnemyKilled();
+        }
+
+        Destroy(gameObject, deathDelay);
+    }
 }
