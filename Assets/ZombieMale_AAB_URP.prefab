@@ -3424,7 +3424,7 @@ Animator:
   m_Controller: {fileID: 9100000, guid: 71307fd494e75a344b74218d7e97de3e, type: 2}
   m_CullingMode: 1
   m_UpdateMode: 0
-  m_ApplyRootMotion: 1
+  m_ApplyRootMotion: 0
   m_LinearVelocityBlending: 0
   m_StabilizeFeet: 0
   m_AnimatePhysics: 0
@@ -3471,7 +3471,7 @@ MonoBehaviour:
   targetStronghold: {fileID: 0}
   stoppingDistance: 1.5
   destinationUpdateInterval: 0.25
-  animator: {fileID: 0}
+  animator: {fileID: 4424948286361785394}
   movementThreshold: 0.1
   navMeshSearchRadius: 3
   snapToNavMeshOnStart: 1
@@ -3512,7 +3512,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyHealth
   maxHealth: 100
   healthFill: {fileID: 7998781656855277378}
-  animator: {fileID: 0}
+  animator: {fileID: 4424948286361785394}
   deathDelay: 2
 --- !u!136 &7917847672897732597
 CapsuleCollider:
