@@ -14,7 +14,7 @@ public class EnemyAttack : MonoBehaviour
 
     [Header("Attack Settings")]
     [SerializeField] private float attackDamage = 10f;
-    [SerializeField] private float attackInterval = 1f;
+    [SerializeField] private float attackInterval = 0.2f;
     [SerializeField] private float attackRange = 2.5f;
 
     [Header("Target Selection")]
@@ -26,7 +26,7 @@ public class EnemyAttack : MonoBehaviour
     [SerializeField] private string forceFieldAttackTrigger = "Attack1";
     [SerializeField] private string objectAttackTrigger = "Attack1";
     [SerializeField] private string playerAttackTrigger = "Attack2";
-    [SerializeField] private float attackAnimationDuration = 1f;
+    [SerializeField] private float attackAnimationDuration = 0.4f;
 
     [Header("Debug")]
     [SerializeField] private bool showDebugMessages = true;

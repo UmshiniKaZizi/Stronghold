@@ -4,13 +4,12 @@ using UnityEngine.InputSystem;
 
 public class PlayerShooting : MonoBehaviour
 {
-    [Header("Gun")]
+    [Header("Weapon")]
     [SerializeField] private Gun gun;
 
-    [Header("Player Look")]
-    [SerializeField] private PlayerLook playerLook;
+    [Header("Control")]
+    [SerializeField] private bool controlled = true;
 
-    private bool isControlled;
     private bool isHoldingShoot;
 
     private void Awake()
@@ -18,109 +17,121 @@ public class PlayerShooting : MonoBehaviour
         if (gun == null)
             gun = GetComponentInChildren<Gun>(true);
 
-        if (playerLook == null)
-            playerLook = GetComponentInChildren<PlayerLook>(true);
-
-        if (playerLook == null)
-            playerLook = GetComponentInParent<PlayerLook>();
-
         if (gun == null)
+        {
             Debug.LogWarning(
-                gameObject.name + " has no Gun assigned!", this);
+                name + " has no Gun assigned!",
+                this
+            );
+        }
 
-        if (playerLook == null)
-            Debug.LogWarning(
-                gameObject.name + " has no PlayerLook assigned!", this);
+        isHoldingShoot = false;
     }
 
     private void Update()
     {
-        if (!isControlled || !isHoldingShoot || gun == null)
+        if (!CanShoot() || !controlled || gun == null)
+        {
+            StopShooting();
             return;
+        }
 
-        if (gun.IsAutomatic())
+        // Continue firing while the shoot button is held
+        // if the weapon is automatic.
+        if (isHoldingShoot && gun.IsAutomatic())
+        {
             gun.Shoot();
+        }
     }
 
+    // Called by PlayerInput when the Shoot action is triggered.
     public void OnShoot(InputValue value)
     {
-        if (!isControlled || gun == null)
+        // Always handle release, even if the character
+        // is no longer controlled.
+        if (!value.isPressed)
+        {
+            isHoldingShoot = false;
+
+            if (gun != null)
+                gun.StopFiring();
+
+            Debug.Log(name + " | SHOOT RELEASED");
             return;
-
-        isHoldingShoot = value.isPressed;
-
-        Debug.Log("Shoot input: " + value.isPressed);
-
-        if (isHoldingShoot)
-        {
-            gun.Shoot();
         }
-        else
+
+        if (!CanShoot() || !controlled || gun == null)
         {
-            gun.StopFiring();
+            Debug.Log(
+                name + " | SHOOT BLOCKED | Started: " +
+                (GameManager.Instance != null &&
+                 GameManager.Instance.HasGameStarted) +
+                " | Controlled: " + controlled +
+                " | Gun assigned: " + (gun != null)
+            );
+
+            return;
         }
+
+        isHoldingShoot = true;
+
+        Debug.Log(name + " | SHOOT PRESSED");
+
+        // Fire immediately on press.
+        gun.Shoot();
     }
-    public void OnShootRelease(InputValue value)
-{
-    if (!value.isPressed)
-    {
-        isHoldingShoot = false;
 
-        if (gun != null)
-            gun.StopFiring();
-
-        Debug.Log("SHOOT RELEASED");
-    }
-}
-
+    // Called by PlayerInput for the Reload action.
     public void OnReload(InputValue value)
     {
-        if (!isControlled || gun == null || !value.isPressed)
+        if (!value.isPressed)
             return;
+
+        if (!CanShoot() || !controlled || gun == null)
+        {
+            Debug.Log(name + " | RELOAD BLOCKED");
+            return;
+        }
 
         gun.TryReload();
     }
 
+    // Preserve compatibility with an Input Action named Aim.
+    // Add your previous aiming implementation here if needed.
     public void OnAim(InputValue value)
     {
-        bool aiming = isControlled && value.isPressed;
-
-        if (playerLook != null)
-            playerLook.SetAiming(aiming);
+        if (!CanShoot() || !controlled)
+            return;
     }
 
-    public void SetControlled(bool controlled)
+    // Called by CharacterSwap when changing characters.
+    public void SetControlled(bool isControlled)
     {
-        isControlled = controlled;
+        controlled = isControlled;
+        isHoldingShoot = false;
 
-        if (!controlled)
+        if (!controlled && gun != null)
         {
-            isHoldingShoot = false;
-
-            if (playerLook != null)
-                playerLook.SetAiming(false);
-
-            if (gun != null)
-            {
-                gun.StopFiring();
-                gun.SetControlled(false);
-            }
-        }
-        else
-        {
-            if (gun != null)
-                gun.SetControlled(true);
+            gun.StopFiring();
         }
 
         Debug.Log(
-            gameObject.name +
-            " SHOOTING CONTROL = " +
-            controlled
+            name + " SHOOTING CONTROL = " + controlled
         );
     }
 
-    private void OnDisable()
+    private bool CanShoot()
     {
+        return GameManager.Instance != null &&
+               GameManager.Instance.HasGameStarted &&
+               !GameManager.Instance.IsGameOver;
+    }
+
+    private void StopShooting()
+    {
+        if (!isHoldingShoot)
+            return;
+
         isHoldingShoot = false;
 
         if (gun != null)
