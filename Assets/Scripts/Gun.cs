@@ -201,22 +201,34 @@ public class Gun : MonoBehaviour
     }
 
     private void SpawnBulletDecal(RaycastHit hit)
-    {
-        if (bulletDecalPrefab == null)
-            return;
+{
+    if (bulletDecalPrefab == null)
+        return;
 
-        Quaternion rotation =
-            Quaternion.LookRotation(hit.normal);
+    // Align decal with the actual impact surface.
+    Quaternion rotation = Quaternion.LookRotation(
+        hit.normal
+    );
 
-        GameObject decal = Instantiate(
-            bulletDecalPrefab,
-            hit.point + hit.normal * decalOffset,
-            rotation
-        );
+    // Instantiate slightly above the surface.
+    Vector3 position =
+        hit.point + hit.normal * decalOffset;
 
-        if (decalLifetime > 0f)
-            Destroy(decal, decalLifetime);
-    }
+    GameObject decal = Instantiate(
+        bulletDecalPrefab,
+        position,
+        rotation
+    );
+
+    // Attach decal to the object that was hit.
+    decal.transform.SetParent(
+        hit.collider.transform,
+        true
+    );
+
+    if (decalLifetime > 0f)
+        Destroy(decal, decalLifetime);
+}
 
     private void SpawnTracer(Vector3 start, Vector3 end)
     {
