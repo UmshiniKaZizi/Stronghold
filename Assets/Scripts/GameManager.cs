@@ -1,4 +1,3 @@
-
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -6,8 +5,8 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
 
-    [Header("Start Menu")]
-    [SerializeField] private GameObject startMenuPanel;
+    [Header("Onboarding")]
+    [SerializeField] private GameObject onboardingRoot;
     [SerializeField] private GameObject menuCamera;
 
     [Header("Game Over")]
@@ -46,24 +45,31 @@ public class GameManager : MonoBehaviour
         gameOver = false;
         deadPlayers = 0;
 
-        // Display the start menu.
-        if (startMenuPanel != null)
-            startMenuPanel.SetActive(true);
+        // Show the entire onboarding sequence.
+        if (onboardingRoot != null)
+        {
+            onboardingRoot.SetActive(true);
+        }
 
+        // Hide Game Over screen.
         if (gameOverPanel != null)
+        {
             gameOverPanel.SetActive(false);
+        }
 
-        // Enable the overview camera.
+        // Show overview/menu camera.
         if (menuCamera != null)
+        {
             menuCamera.SetActive(true);
+        }
 
-        // Show and unlock the cursor for menu interaction.
+        // Cursor must be available during onboarding.
         SetCursorState(false);
 
-        // Pause gameplay until Start is pressed.
+        // Keep gameplay paused while onboarding is happening.
         Time.timeScale = 0f;
 
-        Debug.Log("GameManager: Waiting for Start button.");
+        Debug.Log("GameManager: Waiting for onboarding to finish.");
     }
 
     public void StartGame()
@@ -73,18 +79,22 @@ public class GameManager : MonoBehaviour
 
         Debug.Log("START BUTTON PRESSED");
 
-        // Find all player health components, including inactive characters.
+        // Find all player health components,
+        // including inactive characters.
         PlayerHealth[] allPlayers =
             FindObjectsByType<PlayerHealth>(
                 FindObjectsInactive.Include,
                 FindObjectsSortMode.None
             );
 
-        // STEP 1: Initialize all character health.
+        // STEP 1:
+        // Initialise character health.
         foreach (PlayerHealth player in allPlayers)
         {
             if (player != null)
+            {
                 player.InitializeHealth();
+            }
         }
 
         Debug.Log(
@@ -92,7 +102,8 @@ public class GameManager : MonoBehaviour
             allPlayers.Length + " player(s)."
         );
 
-        // STEP 2: Find the character-switch manager.
+        // STEP 2:
+        // Find CharacterSwap if not already assigned.
         if (characterSwap == null)
         {
             characterSwap =
@@ -105,34 +116,45 @@ public class GameManager : MonoBehaviour
                 "GameManager: CharacterSwap was not found. " +
                 "Gameplay cannot start."
             );
+
             return;
         }
 
-        // STEP 3: Build the circular linked list and select
-        // the starting character.
+        // STEP 3:
+        // Build the character switching list
+        // and select the starting character.
         if (!characterSwap.InitializeCharacters())
         {
             Debug.LogError(
                 "GameManager: Character initialization failed. " +
                 "Gameplay cannot start."
             );
+
             return;
         }
 
-        // STEP 4: Mark gameplay as started.
+        // STEP 4:
+        // Gameplay has officially started.
         gameStarted = true;
 
-        // STEP 5: Hide the menu and overview camera.
-        if (startMenuPanel != null)
-            startMenuPanel.SetActive(false);
+        // STEP 5:
+        // Hide the entire onboarding sequence.
+        if (onboardingRoot != null)
+        {
+            onboardingRoot.SetActive(false);
+        }
 
+        // Turn off menu/overview camera.
         if (menuCamera != null)
+        {
             menuCamera.SetActive(false);
+        }
 
-        // STEP 6: Resume gameplay.
+        // STEP 6:
+        // Resume the game.
         Time.timeScale = 1f;
 
-        // Hide and lock the cursor for gameplay.
+        // Lock cursor for gameplay.
         SetCursorState(true);
 
         Debug.Log(
@@ -183,15 +205,19 @@ public class GameManager : MonoBehaviour
 
         Debug.Log("GAME OVER");
 
-        // Show the overview camera.
+        // Show overview camera again.
         if (menuCamera != null)
+        {
             menuCamera.SetActive(true);
+        }
 
-        // Show the Game Over screen.
+        // Show Game Over screen.
         if (gameOverPanel != null)
+        {
             gameOverPanel.SetActive(true);
+        }
 
-        // Restore the cursor for menu interaction.
+        // Restore cursor.
         SetCursorState(false);
 
         // Freeze gameplay.
@@ -223,6 +249,8 @@ public class GameManager : MonoBehaviour
     private void OnDestroy()
     {
         if (Instance == this)
+        {
             Instance = null;
+        }
     }
 }

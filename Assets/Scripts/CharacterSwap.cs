@@ -492,9 +492,7 @@ public class CharacterSwap : MonoBehaviour
 
         if (characterWheelUI != null)
         {
-            Debug.Log(
-                "CharacterSwap: Character wheel UI reference is assigned. " +
-                "UI update skipped because its public update method has not been confirmed.");
+            characterWheelUI.UpdateCharacterSelection(whichCharacter);
         }
 
         Debug.Log($"CharacterSwap: Active character is {character.name} | Original index: {whichCharacter}");
