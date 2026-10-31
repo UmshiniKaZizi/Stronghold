@@ -7,6 +7,9 @@ public class PlayerShooting : MonoBehaviour
     [Header("Weapon")]
     [SerializeField] private Gun gun;
 
+    [Header("Artillery")]
+    [SerializeField] private ArtilleryBombLauncher bombLauncher;
+
     [Header("Control")]
     [SerializeField] private bool controlled = true;
 
@@ -14,23 +17,30 @@ public class PlayerShooting : MonoBehaviour
     [SerializeField] private PlayerLook playerLook;
 
     private bool isHoldingShoot;
+    private bool bombMode;
 
     private void Awake()
     {
         if (gun == null)
             gun = GetComponentInChildren<Gun>(true);
 
+        if (bombLauncher == null)
+            bombLauncher = GetComponentInChildren<ArtilleryBombLauncher>(true);
+
         if (playerLook == null)
             playerLook = GetComponent<PlayerLook>();
 
         isHoldingShoot = false;
+        bombMode = false;
 
         if (gun == null)
         {
-            Debug.LogWarning(
-                name + " has no Gun assigned!",
-                this
-            );
+            Debug.LogWarning(name + " has no Gun assigned!", this);
+        }
+
+        if (bombLauncher == null)
+        {
+            Debug.Log(name + " has no ArtilleryBombLauncher. Bomb mode unavailable.", this);
         }
     }
 
@@ -42,8 +52,8 @@ public class PlayerShooting : MonoBehaviour
             return;
         }
 
-        // Automatic weapons continue firing while held.
-        if (isHoldingShoot && gun.IsAutomatic())
+        // Automatic weapons only operate in normal firing mode.
+        if (!bombMode && isHoldingShoot && gun.IsAutomatic())
         {
             gun.SetShooting(true);
             gun.Shoot();
@@ -59,26 +69,63 @@ public class PlayerShooting : MonoBehaviour
             return;
         }
 
-        if (!CanShoot() || !controlled || gun == null)
+        if (!CanShoot() || !controlled)
+            return;
+
+        // Bomb mode: launch one bomb per press.
+        if (bombMode)
+        {
+            if (bombLauncher != null)
+                bombLauncher.TryFire();
+
+            return;
+        }
+
+        // Normal weapon mode.
+        if (gun == null)
             return;
 
         isHoldingShoot = true;
 
         gun.SetShooting(true);
-
-        // Fire immediately on press.
         gun.Shoot();
 
-        Debug.Log(name + " | SHOOT PRESSED");
+        Debug.Log(name + " | NORMAL SHOOT PRESSED");
     }
 
     // SHOOT RELEASED
-    // Connected to the separate ShootRelease Input Action.
     public void OnShootRelease(InputValue value)
     {
         StopShooting();
+    }
 
-        Debug.Log(name + " | SHOOT RELEASED");
+    // SWITCH BETWEEN NORMAL AND BOMB MODE
+    public void OnSwitchWeapon(InputValue value)
+    {
+        if (!value.isPressed)
+            return;
+
+        if (!CanShoot() || !controlled)
+            return;
+
+        if (bombLauncher == null)
+        {
+            Debug.LogWarning(
+                name + " cannot switch modes: no ArtilleryBombLauncher assigned.",
+                this
+            );
+            return;
+        }
+
+        // Stop any ongoing normal firing before switching.
+        StopShooting();
+
+        bombMode = !bombMode;
+
+        Debug.Log(
+            name + " | FIRING MODE: " +
+            (bombMode ? "ARTILLERY BOMBS" : "NORMAL AMMUNITION")
+        );
     }
 
     // RELOAD
@@ -87,7 +134,7 @@ public class PlayerShooting : MonoBehaviour
         if (!value.isPressed)
             return;
 
-        if (!CanShoot() || !controlled || gun == null)
+        if (!CanShoot() || !controlled || gun == null || bombMode)
             return;
 
         gun.TryReload();
@@ -101,7 +148,7 @@ public class PlayerShooting : MonoBehaviour
 
         bool aiming = value.isPressed;
 
-        if (aiming && !CanShoot())
+        if (aiming && (!CanShoot() || bombMode))
             return;
 
         playerLook.SetAiming(aiming);
@@ -113,7 +160,12 @@ public class PlayerShooting : MonoBehaviour
         controlled = isControlled;
 
         if (!controlled)
+        {
             StopShooting();
+
+            // Return to normal mode when control is lost.
+            bombMode = false;
+        }
 
         if (gun != null)
             gun.SetControlled(isControlled);
@@ -144,5 +196,10 @@ public class PlayerShooting : MonoBehaviour
         return GameManager.Instance != null &&
                GameManager.Instance.HasGameStarted &&
                !GameManager.Instance.IsGameOver;
+    }
+
+    public bool IsInBombMode()
+    {
+        return bombMode;
     }
 }

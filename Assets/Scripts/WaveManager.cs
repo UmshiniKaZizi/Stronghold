@@ -1,3 +1,4 @@
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -21,21 +22,21 @@ public class WaveManager : MonoBehaviour
     [Header("Wave UI")]
     [SerializeField] private WaveMessageUI waveMessageUI;
 
+    [Header("Artillery Rewards")]
+    [SerializeField] private ArtilleryBombInventory artilleryBombInventory;
+
     private int currentWave;
     private int enemiesRemaining;
 
     private bool spawningFinished;
     private bool waveInProgress;
 
-    // Number of living enemies assigned to each stronghold.
     private readonly Dictionary<Stronghold, int> enemiesPerStronghold =
         new Dictionary<Stronghold, int>();
 
-    // Strongholds that received enemies during this wave.
     private readonly HashSet<Stronghold> assignedStrongholds =
         new HashSet<Stronghold>();
 
-    // Prevents a stronghold from restoring more than once per wave.
     private readonly HashSet<Stronghold> restoredStrongholds =
         new HashSet<Stronghold>();
 
@@ -48,9 +49,29 @@ public class WaveManager : MonoBehaviour
 
         if (enemySpawner == null)
         {
-            Debug.LogError("WaveManager: EnemySpawner is missing!");
+            Debug.LogError(
+                "[WaveManager] EnemySpawner is missing!",
+                this
+            );
             enabled = false;
             return;
+        }
+
+        if (artilleryBombInventory == null)
+        {
+            Debug.LogError(
+                "[WaveManager] ArtilleryBombInventory is NOT ASSIGNED! " +
+                "Kill rewards cannot work.",
+                this
+            );
+        }
+        else
+        {
+            Debug.Log(
+                $"[WaveManager] Artillery inventory connected: " +
+                $"{artilleryBombInventory.name}",
+                this
+            );
         }
 
         StartCoroutine(WaitForGameStart());
@@ -58,14 +79,12 @@ public class WaveManager : MonoBehaviour
 
     private IEnumerator WaitForGameStart()
     {
-        // Wait while the player is going through onboarding.
         while (GameManager.Instance == null ||
                !GameManager.Instance.HasGameStarted)
         {
             yield return null;
         }
 
-        // Give the player a moment after pressing Start.
         yield return new WaitForSeconds(firstWaveDelay);
 
         StartCoroutine(RunWaves());
@@ -98,11 +117,11 @@ public class WaveManager : MonoBehaviour
         restoredStrongholds.Clear();
 
         Debug.Log(
-            "WAVE " + currentWave +
-            " STARTED | Planned enemies: " + enemyCount
+            $"[WaveManager] WAVE {currentWave} STARTED | " +
+            $"Planned enemies: {enemyCount}",
+            this
         );
 
-        // Show Wave Incoming message.
         if (waveMessageUI != null)
         {
             waveMessageUI.ShowWaveIncoming();
@@ -110,30 +129,27 @@ public class WaveManager : MonoBehaviour
 
         enemySpawner.SpawnWave(enemyCount);
 
-        // Wait until the spawner confirms all spawning is finished.
         while (!spawningFinished)
         {
             yield return null;
         }
 
-        // Handle strongholds that received no enemies.
-        // They should not receive a restoration for this wave.
         TryRestoreEligibleStrongholds();
 
-        // Wait until all spawned enemies have been eliminated.
         while (enemiesRemaining > 0)
         {
             yield return null;
         }
 
-        // Final check in case a stronghold became eligible at wave end.
         TryRestoreEligibleStrongholds();
 
         waveInProgress = false;
 
-        Debug.Log("WAVE " + currentWave + " COMPLETE!");
+        Debug.Log(
+            $"[WaveManager] WAVE {currentWave} COMPLETE!",
+            this
+        );
 
-        // Show Wave Complete message.
         if (waveMessageUI != null)
         {
             waveMessageUI.ShowWaveComplete();
@@ -147,7 +163,13 @@ public class WaveManager : MonoBehaviour
     public void EnemySpawned(Stronghold assignedStronghold)
     {
         if (!waveInProgress)
+        {
+            Debug.LogWarning(
+                "[WaveManager] EnemySpawned called outside an active wave.",
+                this
+            );
             return;
+        }
 
         enemiesRemaining++;
 
@@ -165,12 +187,11 @@ public class WaveManager : MonoBehaviour
         }
 
         Debug.Log(
-            "ENEMY SPAWNED | Wave: " + currentWave +
-            " | Alive: " + enemiesRemaining +
-            " | Stronghold: " +
-            (assignedStronghold != null
-                ? assignedStronghold.name
-                : "None")
+            $"[WaveManager] ENEMY SPAWNED | " +
+            $"Wave: {currentWave} | " +
+            $"Alive: {enemiesRemaining} | " +
+            $"Stronghold: {(assignedStronghold != null ? assignedStronghold.name : "None")}",
+            this
         );
     }
 
@@ -179,7 +200,8 @@ public class WaveManager : MonoBehaviour
         spawningFinished = true;
 
         Debug.Log(
-            "SPAWNING FINISHED | Wave " + currentWave
+            $"[WaveManager] SPAWNING FINISHED | Wave {currentWave}",
+            this
         );
 
         TryRestoreEligibleStrongholds();
@@ -189,11 +211,43 @@ public class WaveManager : MonoBehaviour
     // ENEMY DEATH
     // ==========================================
 
-    // Called by EnemyHealth when an enemy dies.
+    private void RegisterArtilleryKill()
+    {
+        Debug.Log(
+            "[WaveManager] RegisterArtilleryKill() CALLED.",
+            this
+        );
+
+        if (artilleryBombInventory == null)
+        {
+            Debug.LogError(
+                "[WaveManager] Cannot register artillery kill. " +
+                "Inventory reference is NULL!",
+                this
+            );
+            return;
+        }
+
+        Debug.Log(
+            $"[WaveManager] Sending kill to inventory: " +
+            $"{artilleryBombInventory.name}",
+            this
+        );
+
+        artilleryBombInventory.RegisterKill();
+    }
+
     public void EnemyKilled(Stronghold assignedStronghold)
     {
-        enemiesRemaining =
-            Mathf.Max(enemiesRemaining - 1, 0);
+        Debug.Log(
+            $"[WaveManager] EnemyKilled(Stronghold) RECEIVED | " +
+            $"Stronghold: {(assignedStronghold != null ? assignedStronghold.name : "None")}",
+            this
+        );
+
+        enemiesRemaining = Mathf.Max(enemiesRemaining - 1, 0);
+
+        RegisterArtilleryKill();
 
         if (assignedStronghold != null &&
             enemiesPerStronghold.ContainsKey(assignedStronghold))
@@ -206,22 +260,27 @@ public class WaveManager : MonoBehaviour
         }
 
         Debug.Log(
-            "ENEMY KILLED | Remaining in wave: " +
-            enemiesRemaining
+            $"[WaveManager] ENEMY KILLED | Remaining in wave: {enemiesRemaining}",
+            this
         );
 
         TryRestoreEligibleStrongholds();
     }
 
-    // Compatibility for any existing scripts calling EnemyKilled().
     public void EnemyKilled()
     {
-        enemiesRemaining =
-            Mathf.Max(enemiesRemaining - 1, 0);
+        Debug.Log(
+            "[WaveManager] EnemyKilled() RECEIVED (no stronghold).",
+            this
+        );
+
+        enemiesRemaining = Mathf.Max(enemiesRemaining - 1, 0);
+
+        RegisterArtilleryKill();
 
         Debug.Log(
-            "ENEMY KILLED | Remaining in wave: " +
-            enemiesRemaining
+            $"[WaveManager] ENEMY KILLED | Remaining in wave: {enemiesRemaining}",
+            this
         );
     }
 
@@ -244,16 +303,11 @@ public class WaveManager : MonoBehaviour
             }
 
             if (!enemiesPerStronghold.ContainsKey(stronghold))
-            {
                 continue;
-            }
 
             if (enemiesPerStronghold[stronghold] > 0)
-            {
                 continue;
-            }
 
-            // All enemies assigned to this stronghold are dead.
             stronghold.RestoreForceField(
                 stronghold.maxForceField * 0.5f
             );
@@ -261,10 +315,9 @@ public class WaveManager : MonoBehaviour
             restoredStrongholds.Add(stronghold);
 
             Debug.Log(
-                "STRONGHOLD RESTORED | " +
-                stronghold.name +
-                " | Wave " +
-                currentWave
+                $"[WaveManager] STRONGHOLD RESTORED | " +
+                $"{stronghold.name} | Wave {currentWave}",
+                this
             );
         }
     }
@@ -283,8 +336,7 @@ public class WaveManager : MonoBehaviour
         return enemiesRemaining;
     }
 
-    public int GetEnemiesRemaining(
-        Stronghold stronghold)
+    public int GetEnemiesRemaining(Stronghold stronghold)
     {
         if (stronghold == null ||
             !enemiesPerStronghold.ContainsKey(stronghold))
