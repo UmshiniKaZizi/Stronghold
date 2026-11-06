@@ -73,26 +73,91 @@ public class PlayerHealth : MonoBehaviour
         HandleDeathConsequences();
     }
 
+    //Commented out 5 NOvember for diagonistic testing
+   // private void HandleDeathConsequences()
+   // {
+    //    CharacterSwap characterSwap = FindFirstObjectByType<CharacterSwap>();
+
+     //   if (characterSwap != null)
+     //   {
+         //   Debug.LogError(
+         //       "BEFORE CHARACTER DEATH HANDLER | Swap Active: " + characterSwap.gameObject.activeInHierarchy +
+      //          " | Parent: " + (characterSwap.transform.parent != null ? characterSwap.transform.parent.name : "No Parent"));
+
+      //      characterSwap.OnCharacterDied(this);
+      //      characterSwap.RefreshSwitchingInput();
+
+      //      Debug.LogError("AFTER CHARACTER DEATH HANDLER | Swap Active: " + characterSwap.gameObject.activeInHierarchy);
+      //  }
+
+     //   if (GameManager.Instance != null)
+     //       GameManager.Instance.PlayerDied();
+
+        // This deactivates only the character that died, not the CharacterSwap manager.
+     //   gameObject.SetActive(false);
+   // }
+
+    //5 November Script
     private void HandleDeathConsequences()
     {
         CharacterSwap characterSwap = FindFirstObjectByType<CharacterSwap>();
 
         if (characterSwap != null)
         {
-            Debug.LogError(
-                "BEFORE CHARACTER DEATH HANDLER | Swap Active: " + characterSwap.gameObject.activeInHierarchy +
-                " | Parent: " + (characterSwap.transform.parent != null ? characterSwap.transform.parent.name : "No Parent"));
+            Debug.Log(
+                "DEATH STEP 1 | Before switching" +
+                " | Dying object: " + gameObject.name +
+                " | Swap active: " + characterSwap.gameObject.activeInHierarchy +
+                " | Swap parent: " + characterSwap.transform.parent.name
+            );
 
             characterSwap.OnCharacterDied(this);
+
+            Debug.Log(
+                "DEATH STEP 2 | After OnCharacterDied" +
+                " | Swap active: " + characterSwap.gameObject.activeInHierarchy +
+                " | Parent active: " + characterSwap.transform.parent.gameObject.activeInHierarchy
+            );
+
             characterSwap.RefreshSwitchingInput();
 
-            Debug.LogError("AFTER CHARACTER DEATH HANDLER | Swap Active: " + characterSwap.gameObject.activeInHierarchy);
+            Debug.Log(
+                "DEATH STEP 3 | After RefreshSwitchingInput" +
+                " | Swap active: " + characterSwap.gameObject.activeInHierarchy
+            );
+        }
+        else
+        {
+            Debug.LogError("DEATH ERROR | CharacterSwap could not be found.");
         }
 
-        if (GameManager.Instance != null)
-            GameManager.Instance.PlayerDied();
+        Debug.Log(
+            "DEATH STEP 4 | Before GameManager.PlayerDied" +
+            " | Dying object: " + gameObject.name
+        );
 
-        // This deactivates only the character that died, not the CharacterSwap manager.
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.PlayerDied();
+        }
+
+        if (characterSwap != null)
+        {
+            Debug.Log(
+                "DEATH STEP 5 | After GameManager.PlayerDied" +
+                " | Swap active: " + characterSwap.gameObject.activeInHierarchy +
+                " | Parent active: " + characterSwap.transform.parent.gameObject.activeInHierarchy
+            );
+        }
+
+        Debug.Log(
+            "DEATH STEP 6 | Before deactivating dying character" +
+            " | Object: " + gameObject.name +
+            " | Parent: " + (transform.parent != null ? transform.parent.name : "No Parent")
+        );
+
         gameObject.SetActive(false);
     }
+
+
 }

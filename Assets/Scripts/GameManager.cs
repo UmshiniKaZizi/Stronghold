@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
@@ -15,6 +16,16 @@ public class GameManager : MonoBehaviour
 
     [Header("Startup Systems")]
     [SerializeField] private CharacterSwap characterSwap;
+
+    //Added some variables 31 October (una)
+    [Header("Stronghold Game Over Conditions")]
+    [SerializeField] private Stronghold[] strongholds;
+
+    //Added some variables 06 November (una)
+    [Header("Game Over Sequence")]
+    [SerializeField] private GameOverSequenceUI gameOverSequence;
+
+  
 
     private int deadPlayers;
     private bool gameOver;
@@ -136,6 +147,11 @@ public class GameManager : MonoBehaviour
         // STEP 4:
         // Gameplay has officially started.
         gameStarted = true;
+        // Start recording the player's performance.
+        if (GameScoreManager.Instance != null)
+        {
+            GameScoreManager.Instance.StartScoring();
+        }
 
         // STEP 5:
         // Hide the entire onboarding sequence.
@@ -189,7 +205,61 @@ public class GameManager : MonoBehaviour
             deadPlayers + "/" + deathsRequiredForGameOver
         );
 
-        if (deadPlayers >= deathsRequiredForGameOver)
+        CheckGameOverConditions();
+
+
+        //Commented out on the 31st of October
+       if (deadPlayers >= deathsRequiredForGameOver)
+       {
+            GameOver();
+       }
+    }
+
+    //Called when a stronghold is destroyed
+    public void StrongholdDestroyed()
+    {
+        CheckGameOverConditions();
+    }
+
+    // Check BOTH conditions before ending the game.
+    private void CheckGameOverConditions()
+    {
+        if (gameOver || !gameStarted)
+            return;
+
+        // Check whether every stronghold has been destroyed.
+        bool allStrongholdsDestroyed = true;
+
+        if (strongholds == null || strongholds.Length == 0)
+        {
+            Debug.LogError(
+                "GameManager: No strongholds assigned!"
+            );
+
+            return;
+        }
+
+        foreach (Stronghold stronghold in strongholds)
+        {
+            if (stronghold == null || !stronghold.IsDestroyed)
+            {
+                allStrongholdsDestroyed = false;
+                break;
+            }
+        }
+
+        // Check whether at least two players have died.
+        bool enoughPlayersDead =
+            deadPlayers >= deathsRequiredForGameOver;
+
+        Debug.Log(
+            "GAME OVER CHECK | Strongholds destroyed: " +
+            allStrongholdsDestroyed +
+            " | Players dead: " + deadPlayers
+        );
+
+        // Both conditions must be true.
+        if (allStrongholdsDestroyed && enoughPlayersDead)
         {
             GameOver();
         }
@@ -205,6 +275,12 @@ public class GameManager : MonoBehaviour
 
         Debug.Log("GAME OVER");
 
+        // Stop recording the player's score.
+        if (GameScoreManager.Instance != null)
+        {
+            GameScoreManager.Instance.StopScoring();
+        }
+
         // Show overview camera again.
         if (menuCamera != null)
         {
@@ -217,11 +293,20 @@ public class GameManager : MonoBehaviour
             gameOverPanel.SetActive(true);
         }
 
+        
+
         // Restore cursor.
         SetCursorState(false);
 
         // Freeze gameplay.
         Time.timeScale = 0f;
+
+        // Animate using unscaled time.
+        if (gameOverSequence != null)
+        {
+            gameOverSequence.PlaySequence();
+        }
+        //StartCoroutine(AnimateGameOverScreen());
     }
 
     public void RestartGame()
@@ -234,6 +319,9 @@ public class GameManager : MonoBehaviour
             SceneManager.GetActiveScene().buildIndex
         );
     }
+
+   
+
 
     public void ExitGame()
     {

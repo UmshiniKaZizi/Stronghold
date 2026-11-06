@@ -245,6 +245,13 @@ public class WaveManager : MonoBehaviour
             this
         );
 
+        // Register the kill for the current wave.
+        if (GameScoreManager.Instance != null)
+        {
+            GameScoreManager.Instance.RegisterEnemyKill(currentWave);
+        }
+
+
         enemiesRemaining = Mathf.Max(enemiesRemaining - 1, 0);
 
         RegisterArtilleryKill();
@@ -273,6 +280,13 @@ public class WaveManager : MonoBehaviour
             "[WaveManager] EnemyKilled() RECEIVED (no stronghold).",
             this
         );
+
+        // Register kills even when no stronghold is assigned.
+        if (GameScoreManager.Instance != null)
+        {
+            GameScoreManager.Instance.RegisterEnemyKill(currentWave);
+        }
+
 
         enemiesRemaining = Mathf.Max(enemiesRemaining - 1, 0);
 
