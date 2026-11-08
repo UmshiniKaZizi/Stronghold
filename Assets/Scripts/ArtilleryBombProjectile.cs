@@ -18,6 +18,9 @@ public class ArtilleryBombProjectile : MonoBehaviour
     private Rigidbody rb;
     private bool hasExploded;
 
+    //07November addition
+    private PlayerHealth ownerPlayer;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
@@ -30,6 +33,9 @@ public class ArtilleryBombProjectile : MonoBehaviour
 
     public void Launch(Vector3 velocity, Transform owner)
     {
+        ownerPlayer = owner.GetComponentInParent<PlayerHealth>();
+
+        
         rb.linearVelocity = velocity;
 
         if (owner == null)
@@ -106,7 +112,7 @@ public class ArtilleryBombProjectile : MonoBehaviour
                 damagePercentage
             );
 
-            enemy.TakeDamage(damage);
+            enemy.TakeDamage(damage, ownerPlayer);
 
             Debug.Log(
                 $"Explosion damaged {enemy.name} for {damage:F1}"

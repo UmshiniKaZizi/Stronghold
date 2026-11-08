@@ -164,9 +164,9 @@ public class Gun : MonoBehaviour
 
             EnemyHealth enemyHealth =
                 hit.collider.GetComponentInParent<EnemyHealth>();
-
+            PlayerHealth shooter = GetComponentInParent<PlayerHealth>();
             if (enemyHealth != null)
-                enemyHealth.TakeDamage(damage);
+                enemyHealth.TakeDamage(damage, shooter);
 
             SpawnBulletDecal(hit);
         }
@@ -177,6 +177,8 @@ public class Gun : MonoBehaviour
             : ray.origin;
 
         SpawnTracer(tracerStart, hitPoint);
+
+
     }
 
     private void PlayMuzzleFlashes()

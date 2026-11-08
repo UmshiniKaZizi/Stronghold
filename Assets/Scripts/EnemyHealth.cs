@@ -1,4 +1,5 @@
 
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -16,6 +17,8 @@ public class EnemyHealth : MonoBehaviour
 
     private float currentHealth;
     private bool hasDied;
+
+    private GameObject lastAttackingPlayer;
 
     private WaveManager waveManager;
     private EnemyMovement enemyMovement;
@@ -48,6 +51,17 @@ public class EnemyHealth : MonoBehaviour
 
     public void TakeDamage(float damage)
     {
+        TakeDamage(damage, null);
+    }
+
+    public void TakeDamage(float damage, PlayerHealth attacker)
+    {
+        if (attacker != null && !attacker.IsDead)
+        {
+            lastAttackingPlayer = attacker.gameObject;
+        }
+        
+
         if (IsDead || damage <= 0f)
             return;
 
@@ -107,7 +121,7 @@ public class EnemyHealth : MonoBehaviour
         // Notify the WaveManager exactly once.
         if (waveManager != null)
         {
-            waveManager.EnemyKilled(assignedStronghold);
+            waveManager.EnemyKilled(assignedStronghold, lastAttackingPlayer);
         }
         else
         {

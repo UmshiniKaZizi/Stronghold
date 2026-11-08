@@ -274,6 +274,15 @@ public class WaveManager : MonoBehaviour
         TryRestoreEligibleStrongholds();
     }
 
+    public void EnemyKilled(Stronghold assignedStronghold, GameObject killer)
+    {
+        if (assignedStronghold != null)
+            assignedStronghold.RegisterPlayerKill(killer);
+
+        EnemyKilled(assignedStronghold);
+    }
+
+
     public void EnemyKilled()
     {
         Debug.Log(
