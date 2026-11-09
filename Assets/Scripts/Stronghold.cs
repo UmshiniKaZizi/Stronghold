@@ -243,11 +243,27 @@ public class Stronghold : MonoBehaviour
     {
 
         // Only the assigned character earns repair progress.
-        if (player == null || 
-            associatedPlayer == null || 
-            player != associatedPlayer.gameObject || 
-            isDestroyed)
+        if (player == null || associatedPlayer == null || isDestroyed)
         {
+            Debug.LogWarning(
+           $"[Stronghold Repair] {DisplayName}: Missing player, assigned character, or Stronghold destroyed.",
+           this
+            );
+            return;
+        }
+
+        // Find the PlayerHealth component responsible for the kill.
+        PlayerHealth killerHealth = player.GetComponentInParent<PlayerHealth>();
+
+        // Compare the actual PlayerHealth components.
+        if (killerHealth != associatedPlayer)
+        {
+            Debug.Log(
+                $"[Stronghold Repair] Kill rejected by {DisplayName}. " +
+                $"Killer: {player.name} | " +
+                $"Assigned player: {associatedPlayer.name}",
+                this
+            );
             return;
         }
 
@@ -255,6 +271,12 @@ public class Stronghold : MonoBehaviour
 
         int requiredKills = Mathf.Max(1, killsPerRepair);
         int repairsCompleted = 0;
+
+        Debug.Log(
+       $"[Stronghold Repair] {DisplayName}: " +
+       $"{repairKillProgress}/{requiredKills} kills.",
+       this
+        );
 
         // Continue repairing while enough kills are banked
         // and there are objects that can be restored.
@@ -264,8 +286,14 @@ public class Stronghold : MonoBehaviour
 
             // Keep earned progress if there is nothing to repair yet.
             if (repairTarget == null)
+            {
+                Debug.Log(
+                $"[Stronghold Repair] {DisplayName}: No repair target available.",
+                this
+            );
                 break;
-
+            }
+                
             bool repairSucceeded = repairTarget.RepairToFull();
 
             if (!repairSucceeded)
@@ -273,6 +301,12 @@ public class Stronghold : MonoBehaviour
 
             repairKillProgress -= requiredKills;
             repairsCompleted++;
+
+            Debug.Log(
+           $"[Stronghold Repair] {DisplayName}: " +
+           $"{repairTarget.name} restored.",
+           this
+            );
         }
         
         if (repairsCompleted > 0)

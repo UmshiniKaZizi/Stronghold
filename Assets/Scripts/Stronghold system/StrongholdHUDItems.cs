@@ -15,6 +15,13 @@ public class StrongholdHUDItems : MonoBehaviour
     [SerializeField] private TextMeshProUGUI forceFieldStatusLabel;
     //[SerializeField] private TextMeshProUGUI breachBanner;
 
+    [Header("Soldier Status")]
+    [SerializeField] private TMP_Text soldierStatusLabel;
+    [SerializeField] private PlayerHealth assignedPlayer;
+
+    [SerializeField] private Color deployedColour = new Color32(54, 169, 255, 255);
+    [SerializeField] private Color kiaColour = new Color32(255, 59, 59, 255);
+
     [Header("Status Visuals")]
     [SerializeField] private Image stateAccent;
     [SerializeField] private Image objectFill;
@@ -24,6 +31,11 @@ public class StrongholdHUDItems : MonoBehaviour
     [SerializeField] private StrongholdEventFeed eventFeed;
 
     private Stronghold boundSystem;
+
+    private void Update()
+    {
+        RefreshSoldierStatus();
+    }
 
     public void Bind(Stronghold system)
     {
@@ -69,8 +81,11 @@ public class StrongholdHUDItems : MonoBehaviour
         RefreshIntegrity(system);
         RefreshForceField(system);
         RefreshRepairProgress(system);
+        RefreshSoldierStatus();
     
     }
+
+
 
     // ==========================================
     // STRONGHOLD INTEGRITY
@@ -87,7 +102,7 @@ public class StrongholdHUDItems : MonoBehaviour
         {
             case StrongholdTier.Damaged:
                 integrityColor = new Color(1f, 0.78f, 0.15f);
-                integrityLabel = "DAMAGED";
+                integrityLabel = "THREATENED";
                 break;
 
             case StrongholdTier.Critical:
@@ -208,10 +223,27 @@ public class StrongholdHUDItems : MonoBehaviour
             boundSystem.Changed -= Refresh;
     }
 
-   // private void OnDisable()
-   // {
-   //     if (boundSystem != null)
-   //         boundSystem.Changed -= Refresh;
-   // }
+    private void RefreshSoldierStatus()
+    {
+        if (soldierStatusLabel == null || assignedPlayer == null)
+            return;
+
+        if (assignedPlayer.IsDead)
+        {
+            soldierStatusLabel.text = "SOLDIER KIA";
+            soldierStatusLabel.color = kiaColour;
+        }
+        else
+        {
+            soldierStatusLabel.text = "SOLDIER DEPLOYED";
+            soldierStatusLabel.color = deployedColour;
+        }
+    }
+
+    // private void OnDisable()
+    // {
+    //     if (boundSystem != null)
+    //         boundSystem.Changed -= Refresh;
+    // }
 
 }

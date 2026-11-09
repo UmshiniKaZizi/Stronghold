@@ -332,7 +332,7 @@ public class WaveManager : MonoBehaviour
                 continue;
 
             stronghold.RestoreForceField(
-                stronghold.maxForceField * 0.5f
+                stronghold.maxForceField * 1f //changed this to 100% integrity
             );
 
             restoredStrongholds.Add(stronghold);
