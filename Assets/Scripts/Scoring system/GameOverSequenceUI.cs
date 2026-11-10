@@ -222,7 +222,7 @@ public class GameOverSequenceUI : MonoBehaviour
         Debug.Log("[GAME OVER UI] STAGE 1: Showing death header.");
 
         if (deathHeaderText != null)
-            deathHeaderText.text = "STRONGHOLD LOST";
+            deathHeaderText.text = "STRONGHOLDS LOST";
 
         yield return FadeGroup(
             deathHeaderGroup,

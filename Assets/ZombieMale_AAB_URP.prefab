@@ -3386,6 +3386,7 @@ GameObject:
   - component: {fileID: 7466567881231469346}
   - component: {fileID: 3193419871379607186}
   - component: {fileID: 7917847672897732597}
+  - component: {fileID: 1026858188307286824}
   m_Layer: 0
   m_Name: ZombieMale_AAB_URP
   m_TagString: Untagged
@@ -3537,6 +3538,18 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 1, z: 0}
+--- !u!114 &1026858188307286824
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7230521327003890216}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f4f1ba34863fa0438e0a56d9931d2e4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyMinimapTarget
 --- !u!1 &7547289246285935684
 GameObject:
   m_ObjectHideFlags: 0
