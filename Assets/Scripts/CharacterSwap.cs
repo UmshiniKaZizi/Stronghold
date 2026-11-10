@@ -15,7 +15,9 @@ public class CharacterSwap : MonoBehaviour
         public CharacterNode Next;
         public bool IsRemoved;
 
-        public CharacterNode(Transform character, int originalIndex)
+        public CharacterNode(
+            Transform character,
+            int originalIndex)
         {
             Character = character;
             OriginalIndex = originalIndex;
@@ -24,11 +26,18 @@ public class CharacterSwap : MonoBehaviour
 
     [Header("Character Setup")]
     [SerializeField] private Transform character;
-    [SerializeField] private List<Transform> possibleCharacters = new List<Transform>();
+    [SerializeField]
+    private List<Transform> possibleCharacters =
+        new List<Transform>();
 
     [Header("Stationary Characters")]
-    [Tooltip("Indices in Possible Characters that cannot move. These remain the original Inspector indices.")]
-    [SerializeField] private List<int> stationaryCharacters = new List<int>();
+    [Tooltip(
+        "Indices in Possible Characters that cannot move. " +
+        "These remain the original Inspector indices."
+    )]
+    [SerializeField]
+    private List<int> stationaryCharacters =
+        new List<int>();
 
     [Header("Current Character")]
     [Tooltip("Starting index in Possible Characters.")]
@@ -36,6 +45,9 @@ public class CharacterSwap : MonoBehaviour
 
     [Header("Character Wheel UI")]
     [SerializeField] private CharacterWheelUI characterWheelUI;
+
+    [Header("Character Switch Frame")]
+    [SerializeField] private SwitchFrameUI characterSwitchFrameUI;
 
     private readonly Dictionary<Transform, CharacterNode> nodeLookup =
         new Dictionary<Transform, CharacterNode>();
@@ -45,8 +57,15 @@ public class CharacterSwap : MonoBehaviour
     private int livingNodeCount;
     private bool isInitialized;
 
-    public int CurrentCharacterIndex => currentNode != null ? currentNode.OriginalIndex : -1;
-    public Transform CurrentCharacter => currentNode != null ? currentNode.Character : null;
+    public int CurrentCharacterIndex =>
+        currentNode != null
+            ? currentNode.OriginalIndex
+            : -1;
+
+    public Transform CurrentCharacter =>
+        currentNode != null
+            ? currentNode.Character
+            : null;
 
     private void Awake()
     {
@@ -55,50 +74,75 @@ public class CharacterSwap : MonoBehaviour
 
         Debug.Log(
             $"CharacterSwap Awake | GameObject: {gameObject.name} | " +
-            $"Active: {gameObject.activeInHierarchy} | Component Enabled: {enabled}");
+            $"Active: {gameObject.activeInHierarchy} | " +
+            $"Component Enabled: {enabled}"
+        );
     }
 
     private void OnEnable()
     {
-        Debug.Log("CharacterSwap OnEnable | CharacterSwitchInputRelay handles switch input.");
+        Debug.Log(
+            "CharacterSwap OnEnable | " +
+            "CharacterSwitchInputRelay handles switch input."
+        );
     }
 
-    // Initialization is intentionally controlled by GameManager.StartGame().
-    // Do not build the list in Start(), because player health must be initialized first.
-
+    // Initialization is intentionally controlled
+    // by GameManager.StartGame().
+    // Do not build the list in Start(),
+    // because player health must be initialized first.
 
     private void OnDisable()
     {
         Debug.LogError(
             "CHARACTER SWAP DISABLED!" +
             " | Active Self: " + gameObject.activeSelf +
-            " | Active In Hierarchy: " + gameObject.activeInHierarchy +
+            " | Active In Hierarchy: " +
+            gameObject.activeInHierarchy +
             " | Component Enabled: " + enabled +
-            " | Parent: " + (transform.parent != null ? transform.parent.name : "No Parent") +
-            " | Parent Active: " + (transform.parent != null && transform.parent.gameObject.activeInHierarchy) +
-            " | Game Over: " + (GameManager.Instance != null && GameManager.Instance.IsGameOver));
-
+            " | Parent: " +
+            (transform.parent != null
+                ? transform.parent.name
+                : "No Parent") +
+            " | Parent Active: " +
+            (transform.parent != null &&
+             transform.parent.gameObject.activeInHierarchy) +
+            " | Game Over: " +
+            (GameManager.Instance != null &&
+             GameManager.Instance.IsGameOver)
+        );
     }
 
     private void OnDestroy()
     {
-        // Character-switch input is handled by CharacterSwitchInputRelay.
+        // Character-switch input is handled by
+        // CharacterSwitchInputRelay.
     }
 
     public bool InitializeCharacters()
     {
-        Debug.Log("CharacterSwap: Initializing circular linked list after health initialization.");
+        Debug.Log(
+            "CharacterSwap: Initializing circular linked list " +
+            "after health initialization."
+        );
 
         BuildCircularList();
 
         if (livingNodeCount == 0)
         {
             isInitialized = false;
-            Debug.LogError("CharacterSwap: Initialization failed; no living characters were found.");
+
+            Debug.LogError(
+                "CharacterSwap: Initialization failed; " +
+                "no living characters were found."
+            );
+
             return false;
         }
 
-        CharacterNode startingNode = FindNodeByOriginalIndex(whichCharacter);
+        CharacterNode startingNode =
+            FindNodeByOriginalIndex(whichCharacter);
+
         if (startingNode == null)
             startingNode = firstNode;
 
@@ -109,8 +153,12 @@ public class CharacterSwap : MonoBehaviour
         ApplyCurrentCharacter();
 
         Debug.Log(
-            $"CharacterSwap initialized | Active: {character.name} | " +
-            $"Original index: {whichCharacter} | Living nodes: {livingNodeCount}");
+            $"CharacterSwap initialized | " +
+            $"Active: {character.name} | " +
+            $"Original index: {whichCharacter} | " +
+            $"Living nodes: {livingNodeCount}"
+        );
+
         return true;
     }
 
@@ -127,31 +175,59 @@ public class CharacterSwap : MonoBehaviour
 
         CharacterNode lastNode = null;
 
-        for (int i = 0; i < possibleCharacters.Count; i++)
+        for (int i = 0;
+             i < possibleCharacters.Count;
+             i++)
         {
-            Transform candidate = possibleCharacters[i];
+            Transform candidate =
+                possibleCharacters[i];
 
             if (candidate == null)
             {
-                Debug.LogWarning($"CharacterSwap: Missing character reference at Inspector index {i}.");
+                Debug.LogWarning(
+                    $"CharacterSwap: Missing character " +
+                    $"reference at Inspector index {i}."
+                );
+
                 continue;
             }
 
-            PlayerHealth health = candidate.GetComponent<PlayerHealth>();
-            if (health != null && health.IsDead)
+            PlayerHealth health =
+                candidate.GetComponent<PlayerHealth>();
+
+            if (health != null &&
+                health.IsDead)
             {
-                Debug.LogWarning($"CharacterSwap: {candidate.name} is already dead; not adding it to the linked list.");
+                Debug.LogWarning(
+                    $"CharacterSwap: {candidate.name} " +
+                    "is already dead; not adding it " +
+                    "to the linked list."
+                );
+
                 continue;
             }
 
             if (nodeLookup.ContainsKey(candidate))
             {
-                Debug.LogWarning($"CharacterSwap: Duplicate character reference '{candidate.name}' at index {i}; ignoring duplicate.");
+                Debug.LogWarning(
+                    $"CharacterSwap: Duplicate character " +
+                    $"reference '{candidate.name}' at " +
+                    $"index {i}; ignoring duplicate."
+                );
+
                 continue;
             }
 
-            CharacterNode node = new CharacterNode(candidate, i);
-            nodeLookup.Add(candidate, node);
+            CharacterNode node =
+                new CharacterNode(
+                    candidate,
+                    i
+                );
+
+            nodeLookup.Add(
+                candidate,
+                node
+            );
 
             if (firstNode == null)
             {
@@ -174,81 +250,141 @@ public class CharacterSwap : MonoBehaviour
             lastNode.Next = firstNode;
         }
 
-        Debug.Log($"CharacterSwap: Circular linked list built with {livingNodeCount} living character(s).");
+        Debug.Log(
+            $"CharacterSwap: Circular linked list built " +
+            $"with {livingNodeCount} living character(s)."
+        );
     }
 
-    // Called by CharacterSwitchInputRelay through PlayerInput / Send Messages.
+    // Called by CharacterSwitchInputRelay through
+    // PlayerInput / Send Messages.
     public void RequestPreviousCharacter()
     {
         LogInputReceived("PREVIOUS");
+
         if (!isInitialized)
         {
-            Debug.LogWarning("CharacterSwap: Previous input ignored; linked list is not initialized.");
+            Debug.LogWarning(
+                "CharacterSwap: Previous input ignored; " +
+                "linked list is not initialized."
+            );
+
             return;
         }
 
         TrySwitchCharacter(-1);
     }
 
-    // Called by CharacterSwitchInputRelay through PlayerInput / Send Messages.
+    // Called by CharacterSwitchInputRelay through
+    // PlayerInput / Send Messages.
     public void RequestNextCharacter()
     {
         LogInputReceived("NEXT");
+
         if (!isInitialized)
         {
-            Debug.LogWarning("CharacterSwap: Next input ignored; linked list is not initialized.");
+            Debug.LogWarning(
+                "CharacterSwap: Next input ignored; " +
+                "linked list is not initialized."
+            );
+
             return;
         }
 
         TrySwitchCharacter(1);
     }
 
-    private void LogInputReceived(string inputName)
+    private void LogInputReceived(
+        string inputName)
     {
         Debug.Log(
-            $"[INPUT DEBUG] {inputName} RECEIVED | Time: {Time.unscaledTime} | " +
-            $"Object Active: {gameObject.activeInHierarchy} | Component Enabled: {enabled} | " +
+            $"[INPUT DEBUG] {inputName} RECEIVED | " +
+            $"Time: {Time.unscaledTime} | " +
+            $"Object Active: {gameObject.activeInHierarchy} | " +
+            $"Component Enabled: {enabled} | " +
             $"Initialized: {isInitialized} | Current: " +
-            (CurrentCharacter != null ? CurrentCharacter.name : "NULL") + " | Game Over: " +
-            (GameManager.Instance != null && GameManager.Instance.IsGameOver));
+            (CurrentCharacter != null
+                ? CurrentCharacter.name
+                : "NULL") +
+            " | Game Over: " +
+            (GameManager.Instance != null &&
+             GameManager.Instance.IsGameOver)
+        );
     }
 
     public void RefreshSwitchingInput()
     {
-        Debug.Log("CharacterSwap: CharacterSwitchInputRelay handles switch input.");
+        Debug.Log(
+            "CharacterSwap: CharacterSwitchInputRelay " +
+            "handles switch input."
+        );
     }
 
-    public void TrySwitchCharacter(int direction)
+    public void TrySwitchCharacter(
+        int direction)
     {
-        if (GameManager.Instance != null && (!GameManager.Instance.HasGameStarted || GameManager.Instance.IsGameOver))
-            return;
-
-        if (!isInitialized || currentNode == null || livingNodeCount <= 1)
+        if (GameManager.Instance != null &&
+            (!GameManager.Instance.HasGameStarted ||
+             GameManager.Instance.IsGameOver))
         {
-            Debug.LogWarning("CharacterSwap: No other living character is available to switch to.");
+            return;
+        }
+
+        if (!isInitialized ||
+            currentNode == null ||
+            livingNodeCount <= 1)
+        {
+            Debug.LogWarning(
+                "CharacterSwap: No other living character " +
+                "is available to switch to."
+            );
+
             return;
         }
 
         if (direction == 0)
         {
-            Debug.LogWarning("CharacterSwap: Direction must be -1 or 1.");
+            Debug.LogWarning(
+                "CharacterSwap: Direction must be -1 or 1."
+            );
+
             return;
         }
 
-        int stepDirection = direction < 0 ? -1 : 1;
-        CharacterNode candidate = currentNode;
+        int stepDirection =
+            direction < 0 ? -1 : 1;
 
-        for (int steps = 0; steps < livingNodeCount; steps++)
+        CharacterNode candidate =
+            currentNode;
+
+        for (int steps = 0;
+             steps < livingNodeCount;
+             steps++)
         {
-            candidate = stepDirection > 0 ? candidate.Next : candidate.Previous;
+            candidate =
+                stepDirection > 0
+                    ? candidate.Next
+                    : candidate.Previous;
 
-            if (candidate == null || candidate.IsRemoved || candidate.Character == null)
-                continue;
-
-            PlayerHealth health = candidate.Character.GetComponent<PlayerHealth>();
-            if (health != null && health.IsDead)
+            if (candidate == null ||
+                candidate.IsRemoved ||
+                candidate.Character == null)
             {
-                RemoveCharacterNode(candidate, false);
+                continue;
+            }
+
+            PlayerHealth health =
+                candidate.Character
+                    .GetComponent<PlayerHealth>();
+
+            if (health != null &&
+                health.IsDead)
+            {
+                RemoveCharacterNode(
+                    candidate,
+                    false
+                );
+
                 if (livingNodeCount <= 1)
                     break;
 
@@ -260,252 +396,481 @@ public class CharacterSwap : MonoBehaviour
                 break;
 
             currentNode = candidate;
-            whichCharacter = currentNode.OriginalIndex;
+            whichCharacter =
+                currentNode.OriginalIndex;
+
             ApplyCurrentCharacter();
 
+            // Flash the correct character frame.
+            if (characterSwitchFrameUI != null)
+            {
+                characterSwitchFrameUI
+                    .FlashCharacterFrame(
+                        whichCharacter
+                    );
+            }
+
             Debug.Log(
-                $"CharacterSwap: Switched to {character.name} | Original index: {whichCharacter} | " +
-                $"Living nodes: {livingNodeCount}");
+                $"CharacterSwap: Switched to " +
+                $"{character.name} | " +
+                $"Original index: {whichCharacter} | " +
+                $"Living nodes: {livingNodeCount}"
+            );
+
             return;
         }
 
-        Debug.LogWarning("CharacterSwap: No other living character could be selected.");
+        Debug.LogWarning(
+            "CharacterSwap: No other living character " +
+            "could be selected."
+        );
     }
 
-    private CharacterNode FindNodeByOriginalIndex(int index)
+    private CharacterNode FindNodeByOriginalIndex(
+        int index)
     {
         if (firstNode == null)
             return null;
 
         CharacterNode node = firstNode;
-        for (int i = 0; i < livingNodeCount; i++)
-        {
-            if (node != null && !node.IsRemoved && node.OriginalIndex == index)
-                return node;
 
-            node = node != null ? node.Next : null;
+        for (int i = 0;
+             i < livingNodeCount;
+             i++)
+        {
+            if (node != null &&
+                !node.IsRemoved &&
+                node.OriginalIndex == index)
+            {
+                return node;
+            }
+
+            node =
+                node != null
+                    ? node.Next
+                    : null;
         }
 
         return null;
     }
 
-    public void OnCharacterDied(PlayerHealth deadCharacter)
+    public void OnCharacterDied(
+        PlayerHealth deadCharacter)
     {
         if (deadCharacter == null)
         {
-            Debug.LogWarning("CharacterSwap: Received a death notification with no PlayerHealth.");
+            Debug.LogWarning(
+                "CharacterSwap: Received a death " +
+                "notification with no PlayerHealth."
+            );
+
             return;
         }
 
-        Transform deadTransform = deadCharacter.transform;
-        if (!nodeLookup.TryGetValue(deadTransform, out CharacterNode deadNode) || deadNode.IsRemoved)
+        Transform deadTransform =
+            deadCharacter.transform;
+
+        if (!nodeLookup.TryGetValue(
+                deadTransform,
+                out CharacterNode deadNode) ||
+            deadNode.IsRemoved)
         {
-            Debug.LogWarning($"CharacterSwap: Dead character '{deadCharacter.name}' is not in the active linked list.");
+            Debug.LogWarning(
+                $"CharacterSwap: Dead character " +
+                $"'{deadCharacter.name}' is not in " +
+                "the active linked list."
+            );
+
             return;
         }
 
-        bool wasCurrentCharacter = deadNode == currentNode;
-        Debug.Log(
-            $"CharacterSwap: Death reported for {deadCharacter.name} | Was current: {wasCurrentCharacter} | " +
-            $"Original index: {deadNode.OriginalIndex} | Living nodes before removal: {livingNodeCount}");
+        bool wasCurrentCharacter =
+            deadNode == currentNode;
 
-        CharacterNode nextCandidate = deadNode.Next;
+        Debug.Log(
+            $"CharacterSwap: Death reported for " +
+            $"{deadCharacter.name} | " +
+            $"Was current: {wasCurrentCharacter} | " +
+            $"Original index: {deadNode.OriginalIndex} | " +
+            $"Living nodes before removal: " +
+            $"{livingNodeCount}"
+        );
+
+        CharacterNode nextCandidate =
+            deadNode.Next;
+
         if (nextCandidate == deadNode)
             nextCandidate = null;
 
-        RemoveCharacterNode(deadNode, false);
+        RemoveCharacterNode(
+            deadNode,
+            false
+        );
 
         if (!wasCurrentCharacter)
         {
-            Debug.Log($"CharacterSwap: Removed inactive character '{deadCharacter.name}' from the linked list.");
+            Debug.Log(
+                $"CharacterSwap: Removed inactive character " +
+                $"'{deadCharacter.name}' from the linked list."
+            );
+
             return;
         }
 
-        if (livingNodeCount <= 0 || nextCandidate == null)
+        if (livingNodeCount <= 0 ||
+            nextCandidate == null)
         {
             currentNode = null;
             character = null;
             whichCharacter = -1;
             isInitialized = false;
-            Debug.LogWarning("CharacterSwap: No surviving characters remain.");
+
+            Debug.LogWarning(
+                "CharacterSwap: No surviving characters remain."
+            );
+
             return;
         }
 
-        // Find the next node that is still alive after removing the dead node.
-        CharacterNode candidate = nextCandidate;
-        int checks = livingNodeCount;
+        // Find the next node that is still alive
+        // after removing the dead node.
+        CharacterNode candidate =
+            nextCandidate;
 
-        for (int i = 0; i < checks; i++)
+        int checks =
+            livingNodeCount;
+
+        for (int i = 0;
+             i < checks;
+             i++)
         {
-            if (candidate != null && !candidate.IsRemoved && candidate.Character != null)
+            if (candidate != null &&
+                !candidate.IsRemoved &&
+                candidate.Character != null)
             {
-                PlayerHealth health = candidate.Character.GetComponent<PlayerHealth>();
-                if (health == null || !health.IsDead)
+                PlayerHealth health =
+                    candidate.Character
+                        .GetComponent<PlayerHealth>();
+
+                if (health == null ||
+                    !health.IsDead)
                 {
                     currentNode = candidate;
-                    whichCharacter = currentNode.OriginalIndex;
+                    whichCharacter =
+                        currentNode.OriginalIndex;
+
                     isInitialized = true;
+
                     ApplyCurrentCharacter();
 
-                    Debug.Log($"CharacterSwap: Automatically switched to {character.name} after death.");
+                    // Flash the frame when the game
+                    // automatically switches after death.
+                    if (characterSwitchFrameUI != null)
+                    {
+                        characterSwitchFrameUI
+                            .FlashCharacterFrame(
+                                whichCharacter
+                            );
+                    }
+
+                    Debug.Log(
+                        $"CharacterSwap: Automatically " +
+                        $"switched to {character.name} " +
+                        "after death."
+                    );
+
                     return;
                 }
             }
 
-            candidate = candidate != null ? candidate.Next : null;
+            candidate =
+                candidate != null
+                    ? candidate.Next
+                    : null;
         }
 
         currentNode = null;
         character = null;
         whichCharacter = -1;
         isInitialized = false;
-        Debug.LogWarning("CharacterSwap: No surviving characters remain.");
+
+        Debug.LogWarning(
+            "CharacterSwap: No surviving characters remain."
+        );
     }
 
     /// <summary>
-    /// Removes a character from the circular list. This does not destroy or deactivate its GameObject.
+    /// Removes a character from the circular list.
+    /// This does not destroy or deactivate its GameObject.
     /// </summary>
-    public void RemoveCharacter(Transform characterToRemove)
+    public void RemoveCharacter(
+        Transform characterToRemove)
     {
         if (characterToRemove == null)
             return;
 
-        if (!nodeLookup.TryGetValue(characterToRemove, out CharacterNode node) || node.IsRemoved)
+        if (!nodeLookup.TryGetValue(
+                characterToRemove,
+                out CharacterNode node) ||
+            node.IsRemoved)
         {
-            Debug.LogWarning($"CharacterSwap: Cannot remove '{characterToRemove.name}'; it is not in the linked list.");
+            Debug.LogWarning(
+                $"CharacterSwap: Cannot remove " +
+                $"'{characterToRemove.name}'; " +
+                "it is not in the linked list."
+            );
+
             return;
         }
 
-        OnCharacterDied(characterToRemove.GetComponent<PlayerHealth>());
+        OnCharacterDied(
+            characterToRemove
+                .GetComponent<PlayerHealth>()
+        );
     }
 
-    private void RemoveCharacterNode(CharacterNode node, bool updateCurrent)
+    private void RemoveCharacterNode(
+        CharacterNode node,
+        bool updateCurrent)
     {
-        if (node == null || node.IsRemoved)
+        if (node == null ||
+            node.IsRemoved)
+        {
             return;
+        }
 
-        bool wasCurrent = node == currentNode;
+        bool wasCurrent =
+            node == currentNode;
 
         if (livingNodeCount == 1)
         {
             firstNode = null;
+
             if (wasCurrent)
                 currentNode = null;
         }
         else
         {
-            node.Previous.Next = node.Next;
-            node.Next.Previous = node.Previous;
+            node.Previous.Next =
+                node.Next;
+
+            node.Next.Previous =
+                node.Previous;
 
             if (firstNode == node)
                 firstNode = node.Next;
 
-            if (wasCurrent && updateCurrent)
+            if (wasCurrent &&
+                updateCurrent)
+            {
                 currentNode = node.Next;
+            }
         }
 
         node.IsRemoved = true;
-        nodeLookup.Remove(node.Character);
+
+        nodeLookup.Remove(
+            node.Character
+        );
+
         livingNodeCount--;
 
-        if (livingNodeCount > 0 && firstNode != null)
+        if (livingNodeCount > 0 &&
+            firstNode != null)
         {
-            firstNode.Previous = FindLastNode(firstNode);
-            firstNode.Previous.Next = firstNode;
+            firstNode.Previous =
+                FindLastNode(firstNode);
+
+            firstNode.Previous.Next =
+                firstNode;
         }
 
+        string removedCharacterName =
+            node.Character != null
+                ? node.Character.name
+                : "destroyed character";
+
         Debug.Log(
-            $"CharacterSwap: Removed node for '{(node.Character != null ? node.Character.name : "destroyed character")}'. " +
-            $"Remaining nodes: {livingNodeCount}");
+            "CharacterSwap: Removed node for '" +
+            removedCharacterName +
+            "'. Remaining nodes: " +
+            livingNodeCount
+        );
     }
 
-    private CharacterNode FindLastNode(CharacterNode start)
+    private CharacterNode FindLastNode(
+        CharacterNode start)
     {
         if (start == null)
             return null;
 
-        CharacterNode node = start;
+        CharacterNode node =
+            start;
+
         int safety = 0;
 
-        while (node.Next != null && node.Next != start && safety++ <= livingNodeCount)
+        while (node.Next != null &&
+               node.Next != start &&
+               safety++ <= livingNodeCount)
+        {
             node = node.Next;
+        }
 
         return node;
     }
 
     private void ApplyCurrentCharacter()
     {
-        if (currentNode == null || currentNode.Character == null)
+        if (currentNode == null ||
+            currentNode.Character == null)
         {
             character = null;
-            Debug.LogError("CharacterSwap: Cannot apply selection; current linked-list node is missing.");
+
+            Debug.LogError(
+                "CharacterSwap: Cannot apply selection; " +
+                "current linked-list node is missing."
+            );
+
             return;
         }
 
-        character = currentNode.Character;
-        whichCharacter = currentNode.OriginalIndex;
+        character =
+            currentNode.Character;
 
-        // Iterate the original Inspector list so every character's control state is updated,
-        // including characters that have been removed from the selectable linked list.
-        for (int i = 0; i < possibleCharacters.Count; i++)
+        whichCharacter =
+            currentNode.OriginalIndex;
+
+        // Iterate the original Inspector list so every
+        // character's control state is updated,
+        // including characters removed from the list.
+        for (int i = 0;
+             i < possibleCharacters.Count;
+             i++)
         {
-            Transform candidate = possibleCharacters[i];
+            Transform candidate =
+                possibleCharacters[i];
+
             if (candidate == null)
                 continue;
 
-            bool isControlled = candidate == character;
-            PlayerHealth health = candidate.GetComponent<PlayerHealth>();
-            bool isDead = health != null && health.IsDead;
+            bool isControlled =
+                candidate == character;
 
-            PlayerMovement movement = candidate.GetComponent<PlayerMovement>();
+            PlayerHealth health =
+                candidate.GetComponent<PlayerHealth>();
+
+            bool isDead =
+                health != null &&
+                health.IsDead;
+
+            PlayerMovement movement =
+                candidate.GetComponent<PlayerMovement>();
+
             if (movement != null)
             {
-                bool canMove = isControlled && !isDead && !stationaryCharacters.Contains(i);
-                movement.SetMovementEnabled(canMove);
+                bool canMove =
+                    isControlled &&
+                    !isDead &&
+                    !stationaryCharacters.Contains(i);
+
+                movement.SetMovementEnabled(
+                    canMove
+                );
             }
 
-            PlayerLook look = candidate.GetComponent<PlayerLook>();
+            PlayerLook look =
+                candidate.GetComponent<PlayerLook>();
+
             if (look != null)
-                look.enabled = isControlled && !isDead;
+            {
+                look.enabled =
+                    isControlled &&
+                    !isDead;
+            }
 
-            Camera[] cameras = candidate.GetComponentsInChildren<Camera>(true);
+            Camera[] cameras =
+                candidate.GetComponentsInChildren<
+                    Camera>(true);
+
             foreach (Camera cam in cameras)
-                cam.enabled = isControlled && !isDead;
+            {
+                cam.enabled =
+                    isControlled &&
+                    !isDead;
+            }
 
-            AudioListener[] listeners = candidate.GetComponentsInChildren<AudioListener>(true);
+            AudioListener[] listeners =
+                candidate.GetComponentsInChildren<
+                    AudioListener>(true);
+
             foreach (AudioListener listener in listeners)
-                listener.enabled = isControlled && !isDead;
+            {
+                listener.enabled =
+                    isControlled &&
+                    !isDead;
+            }
 
             SniperScopeController scope =
-                candidate.GetComponentInChildren<SniperScopeController>(true);
+                candidate.GetComponentInChildren<
+                    SniperScopeController>(true);
+
             if (scope != null)
             {
                 scope.enabled = true;
-                scope.SetControlled(isControlled && !isDead);
+
+                scope.SetControlled(
+                    isControlled &&
+                    !isDead
+                );
             }
 
             PlayerShooting shooting =
-                candidate.GetComponentInChildren<PlayerShooting>(true);
+                candidate.GetComponentInChildren<
+                    PlayerShooting>(true);
+
             if (shooting != null)
-                shooting.SetControlled(isControlled && !isDead);
+            {
+                shooting.SetControlled(
+                    isControlled &&
+                    !isDead
+                );
+            }
         }
 
         if (characterWheelUI != null)
         {
-            characterWheelUI.UpdateCharacterSelection(whichCharacter);
+            characterWheelUI
+                .UpdateCharacterSelection(
+                    whichCharacter
+                );
         }
 
-        Debug.Log($"CharacterSwap: Active character is {character.name} | Original index: {whichCharacter}");
+        Debug.Log(
+            $"CharacterSwap: Active character is " +
+            $"{character.name} | " +
+            $"Original index: {whichCharacter}"
+        );
     }
 
-    public void RequestSwitchFrom(Transform sourceCharacter, int direction)
+    public void RequestSwitchFrom(
+        Transform sourceCharacter,
+        int direction)
     {
-        if (sourceCharacter == null || currentNode == null)
-            return;
-
-        if (currentNode.Character != sourceCharacter)
+        if (sourceCharacter == null ||
+            currentNode == null)
         {
-            Debug.Log($"CharacterSwap: Ignoring switch request from non-controlled character '{sourceCharacter.name}'.");
+            return;
+        }
+
+        if (currentNode.Character !=
+            sourceCharacter)
+        {
+            Debug.Log(
+                $"CharacterSwap: Ignoring switch request " +
+                $"from non-controlled character " +
+                $"'{sourceCharacter.name}'."
+            );
+
             return;
         }
 

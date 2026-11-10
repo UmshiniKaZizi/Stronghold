@@ -14,6 +14,9 @@ public class OnboardingUIManager : MonoBehaviour
     [SerializeField]
     private GameObject tutorialCharacterPanel;
 
+    [SerializeField]
+    private TypewriterTextUI characterSwitchTypewriter;
+
     [Header("Buttons")]
     [SerializeField] private GameObject nextButton;
     [SerializeField] private GameObject startButton;
@@ -87,6 +90,12 @@ public class OnboardingUIManager : MonoBehaviour
             tutorialCharacterPanel.SetActive(
                 step == 2
             );
+        }
+
+        if (step == 2 &&
+         characterSwitchTypewriter != null)
+        {
+            characterSwitchTypewriter.PlayText();
         }
 
         if (nextButton != null)

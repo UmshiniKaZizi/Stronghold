@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class GameScoreManager : MonoBehaviour
 {
-
     public static GameScoreManager Instance;
 
     [Header("Survival Timer")]
@@ -12,6 +11,7 @@ public class GameScoreManager : MonoBehaviour
 
     private float survivalTime;
     private bool timerRunning;
+    private bool scoringHasStarted;
 
     [Header("Wave Scoring")]
     private Dictionary<int, int> waveKills =
@@ -30,8 +30,33 @@ public class GameScoreManager : MonoBehaviour
         Instance = this;
     }
 
+    private void Start()
+    {
+        survivalTime = 0f;
+        timerRunning = false;
+        scoringHasStarted = false;
+
+        // Hide timer during onboarding.
+        if (survivalTimerText != null)
+        {
+            survivalTimerText.enabled = false;
+        }
+    }
+
     private void Update()
     {
+        // Wait until the actual game has started.
+        if (!scoringHasStarted)
+        {
+            if (GameManager.Instance == null ||
+                !GameManager.Instance.HasGameStarted)
+            {
+                return;
+            }
+
+            StartScoring();
+        }
+
         if (!timerRunning)
             return;
 
@@ -43,10 +68,27 @@ public class GameScoreManager : MonoBehaviour
     // Called when gameplay officially begins.
     public void StartScoring()
     {
+        // Prevent the timer from starting during onboarding.
+        if (GameManager.Instance != null &&
+            !GameManager.Instance.HasGameStarted)
+        {
+            return;
+        }
+
+        // Prevent it from resetting if called twice.
+        if (scoringHasStarted)
+            return;
+
         survivalTime = 0f;
         timerRunning = true;
+        scoringHasStarted = true;
 
         waveKills.Clear();
+
+        if (survivalTimerText != null)
+        {
+            survivalTimerText.enabled = true;
+        }
 
         UpdateTimerUI();
 
@@ -58,15 +100,20 @@ public class GameScoreManager : MonoBehaviour
     {
         timerRunning = false;
 
-        Debug.Log("SCORING STOPPED | Time: " +
-                  GetFormattedTime());
+        Debug.Log(
+            "SCORING STOPPED | Time: " +
+            GetFormattedTime()
+        );
     }
 
     // Record an enemy kill for the current wave.
     public void RegisterEnemyKill(int waveNumber)
     {
-        if (!timerRunning || waveNumber <= 0)
+        if (!timerRunning ||
+            waveNumber <= 0)
+        {
             return;
+        }
 
         if (!waveKills.ContainsKey(waveNumber))
         {
@@ -76,7 +123,8 @@ public class GameScoreManager : MonoBehaviour
         waveKills[waveNumber]++;
 
         Debug.Log(
-            "WAVE " + waveNumber +
+            "WAVE " +
+            waveNumber +
             " | ENEMIES KILLED: " +
             waveKills[waveNumber]
         );
@@ -86,7 +134,9 @@ public class GameScoreManager : MonoBehaviour
     public int GetKillsForWave(int waveNumber)
     {
         if (waveKills.ContainsKey(waveNumber))
+        {
             return waveKills[waveNumber];
+        }
 
         return 0;
     }
@@ -100,10 +150,21 @@ public class GameScoreManager : MonoBehaviour
     // Format the survival time into minutes and seconds.
     public string GetFormattedTime()
     {
-        int minutes = Mathf.FloorToInt(survivalTime / 60f);
-        int seconds = Mathf.FloorToInt(survivalTime % 60f);
+        int minutes =
+            Mathf.FloorToInt(
+                survivalTime / 60f
+            );
 
-        return string.Format("{0:00}:{1:00}", minutes, seconds);
+        int seconds =
+            Mathf.FloorToInt(
+                survivalTime % 60f
+            );
+
+        return string.Format(
+            "{0:00}:{1:00}",
+            minutes,
+            seconds
+        );
     }
 
     private void UpdateTimerUI()
@@ -115,5 +176,3 @@ public class GameScoreManager : MonoBehaviour
         }
     }
 }
-
-
