@@ -279,7 +279,7 @@ public class EnemyMovement : MonoBehaviour
             return;
 
         targetObject = obj;
-        target = obj.transform;
+        target = obj.EnemyTarget;
         movementPaused = false;
 
         Debug.Log(

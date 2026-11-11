@@ -9,8 +9,8 @@ public enum DamageSource
 
 public class DamageableObject : MonoBehaviour
 {
-    [Header("Health")]
-    [SerializeField] private float maxHealth = 100f;
+    [Header("Stronghold Object")]
+    [SerializeField] private StrongholdObject strongholdObject;
 
     [Header("Object Visuals")]
     [SerializeField] private GameObject normalVisual;
@@ -41,9 +41,8 @@ public class DamageableObject : MonoBehaviour
     [SerializeField] private float rubbleTorque = 1.5f;
 
     [Header("Temporary Testing")]
+    [SerializeField] private bool enableTestKey = true;
     [SerializeField] private float testDamage = 25f;
-
-    private float currentHealth;
 
     private bool damaged;
     private bool destroyed;
@@ -53,46 +52,16 @@ public class DamageableObject : MonoBehaviour
 
     private void Awake()
     {
-        // Find the little wood pieces used
-        // when the pallet becomes damaged.
-        if (damagePieces != null)
+        if (strongholdObject == null)
         {
-            damagePieceBodies =
-                damagePieces.GetComponentsInChildren<Rigidbody>(true);
-
-            FreezePieces(damagePieceBodies);
+            strongholdObject =
+                GetComponent<StrongholdObject>();
         }
 
-        // Find all individual pieces in the
-        // final destroyed rubble.
-        if (destroyedRubble != null)
+        if (strongholdObject == null)
         {
-            rubbleBodies =
-                destroyedRubble.GetComponentsInChildren<Rigidbody>(true);
-
-            FreezePieces(rubbleBodies);
-        }
-
-        // Hide damaged and destroyed states
-        // before gameplay begins.
-        if (damagedState != null)
-        {
-            damagedState.SetActive(false);
-        }
-
-        if (destroyedRubble != null)
-        {
-            destroyedRubble.SetActive(false);
-        }
-    }
-
-    private void Start()
-    {
-        currentHealth = maxHealth;
-
-        if (normalVisual != null)
-        {
-            normalVisual.SetActive(true);
+            strongholdObject =
+                GetComponentInParent<StrongholdObject>();
         }
 
         if (objectRigidbody == null)
@@ -101,18 +70,50 @@ public class DamageableObject : MonoBehaviour
                 GetComponent<Rigidbody>();
         }
 
-        Debug.Log(
-            gameObject.name +
-            " started with " +
-            currentHealth +
-            " HP."
-        );
+        // Find the little pieces that fly
+        // when the object becomes damaged.
+        if (damagePieces != null)
+        {
+            damagePieceBodies =
+                damagePieces.GetComponentsInChildren<Rigidbody>(true);
+
+            FreezePieces(damagePieceBodies);
+        }
+
+        // Find the final rubble pieces.
+        if (destroyedRubble != null)
+        {
+            rubbleBodies =
+                destroyedRubble.GetComponentsInChildren<Rigidbody>(true);
+
+            FreezePieces(rubbleBodies);
+        }
+
+        // Starting visuals.
+        if (normalVisual != null)
+            normalVisual.SetActive(true);
+
+        if (damagedState != null)
+            damagedState.SetActive(false);
+
+        if (destroyedRubble != null)
+            destroyedRubble.SetActive(false);
+
+        damaged = false;
+        destroyed = false;
     }
 
     private void Update()
     {
-        // TEMPORARY TEST:
-        // Press H to simulate damage.
+        // TEMPORARY TEST ONLY.
+        // Ignore H while onboarding has paused the game.
+        if (!enableTestKey ||
+            Time.timeScale <= 0f ||
+            strongholdObject == null)
+        {
+            return;
+        }
+
         if (Input.GetKeyDown(KeyCode.H))
         {
             Vector3 hitPoint =
@@ -125,7 +126,7 @@ public class DamageableObject : MonoBehaviour
                     transform.forward * 0.2f
                 ).normalized;
 
-            TakeDamage(
+            strongholdObject.TakeDamage(
                 testDamage,
                 DamageSource.ZombieAttack,
                 hitPoint,
@@ -134,8 +135,11 @@ public class DamageableObject : MonoBehaviour
         }
     }
 
-    public void TakeDamage(
-        float damage,
+    // Called by StrongholdObject whenever
+    // this object actually loses health.
+    public void HandleDamage(
+        float currentHealth,
+        float maxHealth,
         DamageSource source,
         Vector3 hitPoint,
         Vector3 hitDirection)
@@ -143,37 +147,10 @@ public class DamageableObject : MonoBehaviour
         if (destroyed)
             return;
 
-        // Zombie bomb will not damage these objects.
+        // Extra safety.
         if (source == DamageSource.ZombieBomb)
-        {
-            Debug.Log(
-                gameObject.name +
-                " ignored Zombie Bomb damage."
-            );
-
             return;
-        }
 
-        currentHealth -= damage;
-
-        currentHealth =
-            Mathf.Max(
-                currentHealth,
-                0f
-            );
-
-        Debug.Log(
-            gameObject.name +
-            " took " +
-            damage +
-            " damage. HP: " +
-            currentHealth +
-            " / " +
-            maxHealth
-        );
-
-        // Give the main pallet a little physical reaction
-        // every time it gets hit.
         ApplyHitMovement(
             hitPoint,
             hitDirection
@@ -201,9 +178,15 @@ public class DamageableObject : MonoBehaviour
         if (objectRigidbody == null)
             return;
 
+        Vector3 direction = hitDirection;
+
+        if (direction.sqrMagnitude < 0.001f)
+        {
+            direction = transform.forward;
+        }
+
         objectRigidbody.AddForceAtPosition(
-            hitDirection.normalized *
-            hitForce,
+            direction.normalized * hitForce,
             hitPoint,
             ForceMode.Impulse
         );
@@ -216,8 +199,7 @@ public class DamageableObject : MonoBehaviour
             );
 
         objectRigidbody.AddTorque(
-            torque *
-            hitTorque,
+            torque * hitTorque,
             ForceMode.Impulse
         );
     }
@@ -262,6 +244,9 @@ public class DamageableObject : MonoBehaviour
 
     private void EnterDestroyedState()
     {
+        if (destroyed)
+            return;
+
         destroyed = true;
 
         if (normalVisual != null)
@@ -269,15 +254,11 @@ public class DamageableObject : MonoBehaviour
             normalVisual.SetActive(false);
         }
 
-        // Hide only the cracked pallet.
-        // We leave DamagePieces alone so pieces
-        // that already flew off don't disappear.
         if (damagedVisual != null)
         {
             damagedVisual.SetActive(false);
         }
 
-        // Stop the main pallet body.
         if (objectRigidbody != null)
         {
             objectRigidbody.linearVelocity =
@@ -289,7 +270,6 @@ public class DamageableObject : MonoBehaviour
             objectRigidbody.isKinematic = true;
         }
 
-        // Reveal and release the final rubble.
         if (destroyedRubble != null)
         {
             destroyedRubble.SetActive(true);
@@ -305,11 +285,8 @@ public class DamageableObject : MonoBehaviour
 
         Debug.Log(
             gameObject.name +
-            " was destroyed."
+            " entered destroyed state."
         );
-
-        // Stop checking H after destruction.
-        enabled = false;
     }
 
     private void FreezePieces(
@@ -335,71 +312,53 @@ public class DamageableObject : MonoBehaviour
     }
 
     private void ReleasePieces(
-     Rigidbody[] pieces,
-     Vector3 centre,
-     float force,
-     float upwardForce,
-     float torque)
+        Rigidbody[] pieces,
+        Vector3 centre,
+        float force,
+        float upwardForce,
+        float torque)
     {
         if (pieces == null)
             return;
-
-        // Stop the wooden pieces from colliding
-        // with each other.
-        for (int i = 0; i < pieces.Length; i++)
-        {
-            Collider colliderA =
-                pieces[i] != null
-                    ? pieces[i].GetComponent<Collider>()
-                    : null;
-
-            if (colliderA == null)
-                continue;
-
-            for (int j = i + 1; j < pieces.Length; j++)
-            {
-                Collider colliderB =
-                    pieces[j] != null
-                        ? pieces[j].GetComponent<Collider>()
-                        : null;
-
-                if (colliderB != null)
-                {
-                    Physics.IgnoreCollision(
-                        colliderA,
-                        colliderB,
-                        true
-                    );
-                }
-            }
-        }
 
         foreach (Rigidbody piece in pieces)
         {
             if (piece == null)
                 continue;
 
+            // Separate the broken piece
+            // from the original object.
+            piece.transform.SetParent(null, true);
+
             piece.isKinematic = false;
             piece.useGravity = true;
 
-            piece.linearVelocity = Vector3.zero;
-            piece.angularVelocity = Vector3.zero;
+            piece.linearVelocity =
+                Vector3.zero;
 
-            // Very small controlled movement.
+            piece.angularVelocity =
+                Vector3.zero;
+
+            piece.WakeUp();
+
+            // Small controlled movement.
             piece.linearVelocity =
                 new Vector3(
-                    Random.Range(-0.15f, 0.15f),
-                    Random.Range(0.2f, 0.4f),
-                    Random.Range(-0.15f, 0.15f)
+                    Random.Range(-0.25f, 0.25f),
+                    Random.Range(0.4f, 0.7f),
+                    Random.Range(-0.25f, 0.25f)
                 );
 
-            // Very small rotation.
             piece.angularVelocity =
-                Random.insideUnitSphere * 0.3f;
+                Random.insideUnitSphere * 0.4f;
         }
     }
+
     public float GetHealth()
     {
-        return currentHealth;
+        if (strongholdObject == null)
+            return 0f;
+
+        return strongholdObject.CurrentHealth;
     }
 }

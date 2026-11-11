@@ -361,8 +361,8 @@ public class Stronghold : MonoBehaviour
         {
             if (obj == null || obj.IsDestroyed) 
                 continue;
-            float distance = 
-                (obj.transform.position - position).sqrMagnitude;
+            float distance =
+                (obj.EnemyTarget.position - position).sqrMagnitude;
             if (distance < closestDistance) 
             { 
                 closestDistance = distance; 

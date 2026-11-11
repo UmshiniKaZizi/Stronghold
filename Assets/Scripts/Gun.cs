@@ -163,10 +163,34 @@ public class Gun : MonoBehaviour
             hitPoint = hit.point;
 
             EnemyHealth enemyHealth =
-                hit.collider.GetComponentInParent<EnemyHealth>();
-            PlayerHealth shooter = GetComponentInParent<PlayerHealth>();
+      hit.collider.GetComponentInParent<EnemyHealth>();
+
+            StrongholdObject strongholdObject =
+                hit.collider.GetComponentInParent<StrongholdObject>();
+
+            PlayerHealth shooter =
+                GetComponentInParent<PlayerHealth>();
+
+            // Hit a zombie.
             if (enemyHealth != null)
-                enemyHealth.TakeDamage(damage, shooter);
+            {
+                enemyHealth.TakeDamage(
+                    damage,
+                    shooter
+                );
+            }
+
+            // Hit a damageable Stronghold object.
+            else if (strongholdObject != null &&
+                     !strongholdObject.IsDestroyed)
+            {
+                strongholdObject.TakeDamage(
+                    damage,
+                    DamageSource.PlayerBullet,
+                    hit.point,
+                    ray.direction
+                );
+            }
 
             SpawnBulletDecal(hit);
         }

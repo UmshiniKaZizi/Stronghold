@@ -213,7 +213,7 @@ public class EnemyAttack : MonoBehaviour
 
         attackObject = targetObject;
         attackPlayer = null;
-        currentAttackTarget = targetObject.transform;
+        currentAttackTarget = targetObject.EnemyTarget;
         currentAttackType = AttackType.Object;
 
         if (enemyMovement != null)
@@ -305,7 +305,22 @@ public class EnemyAttack : MonoBehaviour
                 if (attackObject != null &&
                     !attackObject.IsDestroyed)
                 {
-                    attackObject.TakeDamage(attackDamage);
+                    Vector3 hitPoint =
+    attackObject.transform.position +
+    Vector3.up * 0.5f;
+
+                    Vector3 attackDirection =
+                        (
+                            attackObject.transform.position -
+                            transform.position
+                        ).normalized;
+
+                    attackObject.TakeDamage(
+                        attackDamage,
+                        DamageSource.ZombieAttack,
+                        hitPoint,
+                        attackDirection
+                    );
                 }
                 break;
 
