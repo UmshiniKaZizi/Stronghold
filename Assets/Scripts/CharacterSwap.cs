@@ -94,23 +94,40 @@ public class CharacterSwap : MonoBehaviour
 
     private void OnDisable()
     {
-        Debug.LogError(
-            "CHARACTER SWAP DISABLED!" +
-            " | Active Self: " + gameObject.activeSelf +
-            " | Active In Hierarchy: " +
-            gameObject.activeInHierarchy +
-            " | Component Enabled: " + enabled +
-            " | Parent: " +
-            (transform.parent != null
-                ? transform.parent.name
-                : "No Parent") +
-            " | Parent Active: " +
-            (transform.parent != null &&
-             transform.parent.gameObject.activeInHierarchy) +
-            " | Game Over: " +
-            (GameManager.Instance != null &&
-             GameManager.Instance.IsGameOver)
-        );
+        Debug.LogWarning(
+       "CHARACTER SWAP DISABLED!" +
+       " | Active Self: " + gameObject.activeSelf +
+       " | Active In Hierarchy: " + gameObject.activeInHierarchy +
+       " | Component Enabled: " + enabled +
+       " | Parent: " +
+       (transform.parent != null
+           ? transform.parent.name
+           : "No Parent") +
+       " | Parent Active: " +
+       (transform.parent != null &&
+        transform.parent.gameObject.activeInHierarchy) +
+       " | Game Over: " +
+       (GameManager.Instance != null &&
+        GameManager.Instance.IsGameOver)
+   );
+        //Commented out for diagnostic reasons
+       // Debug.LogError(
+          //  "CHARACTER SWAP DISABLED!" +
+          //  " | Active Self: " + gameObject.activeSelf +
+          //  " | Active In Hierarchy: " +
+          //  gameObject.activeInHierarchy +
+          //  " | Component Enabled: " + enabled +
+          //  " | Parent: " +
+          //  (transform.parent != null
+          //      ? transform.parent.name
+          //      : "No Parent") +
+          //  " | Parent Active: " +
+          //  (transform.parent != null &&
+          //   transform.parent.gameObject.activeInHierarchy) +
+          //  " | Game Over: " +
+          //  (GameManager.Instance != null &&
+           //  GameManager.Instance.IsGameOver)
+        //);
     }
 
     private void OnDestroy()

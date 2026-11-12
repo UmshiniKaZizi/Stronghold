@@ -62,8 +62,62 @@ public class CharacterWheelUI : MonoBehaviour
     [SerializeField] private AudioClip artillerySound;
     [SerializeField] private AudioClip sniperSound;
 
+    [Header("Damage Warning Blink")]
+
+    [SerializeField] private CanvasGroup assaultCanvasGroup;
+    [SerializeField] private CanvasGroup artilleryCanvasGroup;
+    [SerializeField] private CanvasGroup sniperCanvasGroup;
+
+    [SerializeField] private float blinkDuration = 1.2f;
+    [SerializeField] private float blinkInterval = 0.10f;
+    [SerializeField] private float blinkTransparency = 0.25f;
+
+    private Coroutine[] blinkCoroutines = new Coroutine[3];
+
+  
+    [SerializeField]
+    private Color damageFlashColor =
+        new Color(1f, 0f, 0f, 0.85f);
+
+
+    [Header("Damage Alert Sound")]
+
+    [SerializeField] private AudioSource damageAudioSource;
+    [SerializeField] private AudioClip damageAlertSound;
+
+    [SerializeField, Range(0f, 1f)]
+    private float damageAlertVolume = 0.8f;
+
     private int currentSelectedCharacter = -1;
     private Coroutine swapCoroutine;
+
+    // -----------------------------
+    // UNITY LIFECYCLE
+    // -----------------------------
+
+    private void OnEnable()
+    {
+        SubscribeToHealthEvents();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeFromHealthEvents();
+
+        // Stop all active blinking coroutines.
+        for (int i = 0; i < blinkCoroutines.Length; i++)
+        {
+            if (blinkCoroutines[i] != null)
+            {
+                StopCoroutine(blinkCoroutines[i]);
+                blinkCoroutines[i] = null;
+            }
+        }
+
+        ResetProfileTransparency();
+    }
+
+
 
     private void Start()
     {
@@ -389,6 +443,51 @@ public class CharacterWheelUI : MonoBehaviour
         }
     }
 
+    private void SetProfileColor(
+       int characterIndex,
+       Color colour)
+    {
+        switch (characterIndex)
+        {
+            case 0:
+                if (assaultActiveVisual != null)
+                    assaultActiveVisual.color = colour;
+
+                if (assaultInactiveVisual != null)
+                    assaultInactiveVisual.color = colour;
+                break;
+
+            case 1:
+                if (artilleryActiveVisual != null)
+                    artilleryActiveVisual.color = colour;
+
+                if (artilleryInactiveVisual != null)
+                    artilleryInactiveVisual.color = colour;
+                break;
+
+            case 2:
+                if (sniperActiveVisual != null)
+                    sniperActiveVisual.color = colour;
+
+                if (sniperInactiveVisual != null)
+                    sniperInactiveVisual.color = colour;
+                break;
+        }
+    }
+
+
+    private void RestoreProfileColor(int characterIndex)
+    {
+        PlayerHealth health = GetPlayerHealth(characterIndex);
+
+        Color originalColour =
+            health != null && health.IsDead
+            ? deadProfileColor
+            : Color.white;
+
+        SetProfileColor(characterIndex, originalColour);
+    }
+
     // -----------------------------
     // HEALTH BARS
     // -----------------------------
@@ -489,4 +588,231 @@ public class CharacterWheelUI : MonoBehaviour
                 break;
         }
     }
+
+
+
+
+    private void SubscribeToHealthEvents()
+    {
+        if (assaultHealth != null)
+        {
+            assaultHealth.OnDamaged += AssaultDamaged;
+            assaultHealth.OnDied += AssaultDied;
+        }
+
+        if (artilleryHealth != null)
+        {
+            artilleryHealth.OnDamaged += ArtilleryDamaged;
+            artilleryHealth.OnDied += ArtilleryDied;
+        }
+
+        if (sniperHealth != null)
+        {
+            sniperHealth.OnDamaged += SniperDamaged;
+            sniperHealth.OnDied += SniperDied;
+        }
+    }
+
+    private void UnsubscribeFromHealthEvents()
+    {
+        if (assaultHealth != null)
+        {
+            assaultHealth.OnDamaged -= AssaultDamaged;
+            assaultHealth.OnDied -= AssaultDied;
+        }
+
+        if (artilleryHealth != null)
+        {
+            artilleryHealth.OnDamaged -= ArtilleryDamaged;
+            artilleryHealth.OnDied -= ArtilleryDied;
+        }
+
+        if (sniperHealth != null)
+        {
+            sniperHealth.OnDamaged -= SniperDamaged;
+            sniperHealth.OnDied -= SniperDied;
+        }
+    }
+
+    private void AssaultDamaged()
+    {
+        StartDamageBlink(0);
+    }
+
+    private void ArtilleryDamaged()
+    {
+        StartDamageBlink(1);
+    }
+
+    private void SniperDamaged()
+    {
+        StartDamageBlink(2);
+    }
+
+
+    private void AssaultDied()
+    {
+        StopDamageBlink(0);
+    }
+
+    private void ArtilleryDied()
+    {
+        StopDamageBlink(1);
+    }
+
+    private void SniperDied()
+    {
+        StopDamageBlink(2);
+    }
+
+
+    private void StartDamageBlink(int characterIndex)
+    {
+        PlayerHealth health = GetPlayerHealth(characterIndex);
+
+        if (health == null || health.IsDead)
+            return;
+
+        // Only play the alert sound if the damaged character
+        // is NOT the currently selected character.
+        if (characterIndex != currentSelectedCharacter)
+        {
+            if (damageAudioSource != null &&
+                damageAlertSound != null)
+            {
+                damageAudioSource.PlayOneShot(
+                    damageAlertSound,
+                    damageAlertVolume
+                );
+            }
+        }
+
+        // Stop an existing blink before starting another one.
+        if (blinkCoroutines[characterIndex] != null)
+        {
+            StopCoroutine(blinkCoroutines[characterIndex]);
+        }
+
+        blinkCoroutines[characterIndex] =
+           StartCoroutine(BlinkProfile(characterIndex));
+    }
+
+
+    private IEnumerator BlinkProfile(int characterIndex)
+    {
+        CanvasGroup profile = GetProfileCanvasGroup(characterIndex);
+
+        if (profile == null)
+        {
+            blinkCoroutines[characterIndex] = null;
+            yield break;
+        }
+
+       
+
+        float elapsedTime = 0f;
+        bool isVisible = true;
+
+        while (elapsedTime < blinkDuration)
+        {
+            PlayerHealth health = GetPlayerHealth(characterIndex);
+
+            if (health == null || health.IsDead)
+                break;
+
+            // Apply red to both active and inactive artwork.
+            SetProfileColor(characterIndex, damageFlashColor);
+
+            // Blink using CanvasGroup transparency.
+            profile.alpha = isVisible
+                ? 1f
+                : blinkTransparency;
+
+            isVisible = !isVisible;
+
+            elapsedTime += blinkInterval;
+
+            yield return new WaitForSecondsRealtime(blinkInterval);
+        }
+
+        // Restore the original appearance.
+        RestoreProfileColor(characterIndex);
+
+        profile.alpha = 1f;
+
+        blinkCoroutines[characterIndex] = null;
+
+        
+    }
+
+    private CanvasGroup GetProfileCanvasGroup(int characterIndex)
+    {
+        switch (characterIndex)
+        {
+            case 0:
+                return assaultCanvasGroup;
+
+            case 1:
+                return artilleryCanvasGroup;
+
+            case 2:
+                return sniperCanvasGroup;
+
+            default:
+                return null;
+        }
+    }
+
+
+
+    private PlayerHealth GetPlayerHealth(int characterIndex)
+    {
+        switch (characterIndex)
+        {
+            case 0:
+                return assaultHealth;
+
+            case 1:
+                return artilleryHealth;
+
+            case 2:
+                return sniperHealth;
+        }
+
+        return null;
+    }
+
+
+
+    private void StopDamageBlink(int characterIndex)
+    {
+        if (blinkCoroutines[characterIndex] != null)
+        {
+            StopCoroutine(blinkCoroutines[characterIndex]);
+            blinkCoroutines[characterIndex] = null;
+        }
+
+        CanvasGroup profile = GetProfileCanvasGroup(characterIndex);
+
+        if (profile != null)
+            profile.alpha = 1f;
+
+        RestoreProfileColor(characterIndex);
+    }
+
+    private void ResetProfileTransparency()
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            CanvasGroup profile = GetProfileCanvasGroup(i);
+
+            if (profile != null)
+                profile.alpha = 1f;
+
+            RestoreProfileColor(i);
+        }
+
+        
+    }
+
 }

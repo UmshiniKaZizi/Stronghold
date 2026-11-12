@@ -20,6 +20,7 @@ public class OnboardingUIManager : MonoBehaviour
     [Header("Buttons")]
     [SerializeField] private GameObject nextButton;
     [SerializeField] private GameObject startButton;
+    [SerializeField] private GameObject exitButton;
 
     [Header("Gameplay UI")]
     [SerializeField]
@@ -47,6 +48,12 @@ public class OnboardingUIManager : MonoBehaviour
         if (currentStep > 2)
         {
             currentStep = 2;
+        }
+
+        // Hide Exit button after Next is pressed.
+        if (exitButton != null)
+        {
+            exitButton.SetActive(false);
         }
 
         ShowStep(currentStep);
@@ -111,6 +118,8 @@ public class OnboardingUIManager : MonoBehaviour
                 step == 2
             );
         }
+
+        
     }
 
     public void StartGameplay()
@@ -130,6 +139,10 @@ public class OnboardingUIManager : MonoBehaviour
         if (startButton != null)
             startButton.SetActive(false);
 
+        // Hide Exit button when gameplay starts.
+        if (exitButton != null)
+            exitButton.SetActive(false);
+
         if (gameplayProfilesVisuals != null)
         {
             gameplayProfilesVisuals.SetActive(true);
@@ -147,4 +160,19 @@ public class OnboardingUIManager : MonoBehaviour
             GameManager.Instance.StartGame();
         }
     }
+
+    public void ExitGame()
+    {
+    
+
+        Debug.Log("Exiting Stronghold...");
+
+        Application.Quit();
+
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#endif
+    }
+
+    
 }

@@ -8,6 +8,12 @@ public class PlayerHealth : MonoBehaviour
     [Header("Assigned Stronghold")]
     [SerializeField] private Stronghold associatedStronghold;
 
+    // Notifies the UI when this character takes damage.
+    public event System.Action OnDamaged;
+
+    // Notifies the UI when this character dies.
+    public event System.Action OnDied;
+
     private float currentHealth;
     private bool hasDied;
     private bool healthInitialized;
@@ -40,8 +46,16 @@ public class PlayerHealth : MonoBehaviour
         if (IsDead || damage <= 0f)
             return;
 
+        float previousHealth = currentHealth;
+
         currentHealth = Mathf.Max(currentHealth - damage, 0f);
         Debug.Log(name + " Health: " + currentHealth + "/" + maxHealth);
+
+        // Notify the character profile UI.
+        if (currentHealth < previousHealth)
+        {
+            OnDamaged?.Invoke();
+        }
 
         if (currentHealth <= 0f)
             Die();
@@ -53,6 +67,9 @@ public class PlayerHealth : MonoBehaviour
             return;
 
         hasDied = true;
+
+        OnDied?.Invoke();
+
         Debug.Log("PLAYER DIED | " + name);
 
         if (associatedStronghold != null && !associatedStronghold.IsDestroyed)
@@ -68,6 +85,8 @@ public class PlayerHealth : MonoBehaviour
 
         hasDied = true;
         currentHealth = 0f;
+
+        OnDied?.Invoke();
 
         Debug.Log("PLAYER DIED | " + name + " | Reason: Associated stronghold destroyed");
         HandleDeathConsequences();

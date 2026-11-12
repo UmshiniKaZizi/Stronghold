@@ -153,10 +153,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fd47ea6823c22674a96d1ed8ded1fbfa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ArtilleryBombProjectile
-  explosionRadius: 5
+  explosionRadius: 15
   maximumDamage: 100
-  minimumDamage: 25
+  minimumDamage: 50
   damageMask:
     serializedVersion: 2
     m_Bits: 4294967295
   lifetime: 10
+  explosionEffect: {fileID: 0}
