@@ -202,4 +202,9 @@ public class PlayerShooting : MonoBehaviour
     {
         return bombMode;
     }
+
+    public bool IsControlled()
+    {
+        return controlled;
+    }
 }

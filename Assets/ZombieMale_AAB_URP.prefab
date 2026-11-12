@@ -3492,7 +3492,7 @@ MonoBehaviour:
   attackInterval: 1
   attackRange: 8
   playerTargetWeight: 1
-  objectTargetWeight: 1
+  objectTargetWeight: 3
   animator: {fileID: 4424948286361785394}
   forceFieldAttackTrigger: Attack1
   objectAttackTrigger: Attack1

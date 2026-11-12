@@ -15,6 +15,10 @@ public class ArtilleryBombProjectile : MonoBehaviour
     [Header("Lifetime")]
     [SerializeField] private float lifetime = 10f;
 
+
+    [Header("Explosion Visual")]
+    [SerializeField] private GameObject explosionEffect;
+
     private Rigidbody rb;
     private bool hasExploded;
 
@@ -65,10 +69,18 @@ public class ArtilleryBombProjectile : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        Explode();
+        Vector3 explosionPoint = transform.position;
+
+        if (collision.contactCount > 0)
+        {
+            explosionPoint =
+                collision.GetContact(0).point;
+        }
+
+        Explode(explosionPoint);
     }
 
-    private void Explode()
+    private void Explode(Vector3 explosionPoint)
     {
         if (hasExploded)
             return;
@@ -77,8 +89,19 @@ public class ArtilleryBombProjectile : MonoBehaviour
 
         Debug.Log("ARTILLERY BOMB EXPLODED!");
 
+        if (explosionEffect != null)
+        {
+            GameObject effect = Instantiate(
+                explosionEffect,
+                explosionPoint,
+                Quaternion.identity
+            );
+
+            Destroy(effect, 5f);
+        }
+
         Collider[] hits = Physics.OverlapSphere(
-            transform.position,
+            explosionPoint,
             explosionRadius,
             damageMask
         );
@@ -99,9 +122,9 @@ public class ArtilleryBombProjectile : MonoBehaviour
             }
 
             float distance = Vector3.Distance(
-                transform.position,
-                enemy.transform.position
-            );
+            explosionPoint,
+            enemy.transform.position
+);
 
             float damagePercentage =
                 1f - Mathf.Clamp01(distance / explosionRadius);

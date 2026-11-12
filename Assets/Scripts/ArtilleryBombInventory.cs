@@ -1,4 +1,3 @@
-
 using UnityEngine;
 
 public class ArtilleryBombInventory : MonoBehaviour
@@ -11,14 +10,36 @@ public class ArtilleryBombInventory : MonoBehaviour
     private int currentBombs;
     private int killProgress;
 
+    // ==========================================
+    // PUBLIC INFORMATION FOR OTHER SCRIPTS / UI
+    // ==========================================
+
     public int CurrentBombs => currentBombs;
+
     public int KillProgress => killProgress;
+
     public int MaxBombs => maxBombs;
+
+    public int KillsRequired => killsRequired;
+
     public bool HasBomb => currentBombs > 0;
+
+    public bool IsFull => currentBombs >= maxBombs;
+
 
     private void Awake()
     {
-        currentBombs = Mathf.Clamp(startingBombs, 0, maxBombs);
+        // Make sure Inspector values are valid.
+        killsRequired = Mathf.Max(1, killsRequired);
+        maxBombs = Mathf.Max(1, maxBombs);
+
+        currentBombs =
+            Mathf.Clamp(
+                startingBombs,
+                0,
+                maxBombs
+            );
+
         killProgress = 0;
 
         Debug.Log(
@@ -29,6 +50,11 @@ public class ArtilleryBombInventory : MonoBehaviour
         );
     }
 
+
+    // ==========================================
+    // REGISTER ARTILLERY KILL
+    // ==========================================
+
     public void RegisterKill()
     {
         Debug.Log(
@@ -38,13 +64,16 @@ public class ArtilleryBombInventory : MonoBehaviour
             this
         );
 
-        // Ignore kills entirely when inventory is full.
+        // If we already have the maximum number
+        // of bombs, kills do not add more progress.
         if (currentBombs >= maxBombs)
         {
-            Debug.LogWarning(
-                "[ArtilleryInventory] INVENTORY FULL | Kill ignored.",
+            Debug.Log(
+                "[ArtilleryInventory] INVENTORY FULL | " +
+                "Kill progress paused.",
                 this
             );
+
             return;
         }
 
@@ -57,19 +86,35 @@ public class ArtilleryBombInventory : MonoBehaviour
             this
         );
 
+        // Enough kills earned = give one bomb.
         if (killProgress >= killsRequired)
         {
             currentBombs++;
+
+            // Reset progress for the next bomb.
             killProgress = 0;
+
+            // Make sure we never go above maximum bombs.
+            currentBombs =
+                Mathf.Clamp(
+                    currentBombs,
+                    0,
+                    maxBombs
+                );
 
             Debug.Log(
                 $"[ArtilleryInventory] BOMB AWARDED! | " +
                 $"Bombs: {currentBombs}/{maxBombs} | " +
-                $"Progress reset: {killProgress}/{killsRequired}",
+                $"Progress: {killProgress}/{killsRequired}",
                 this
             );
         }
     }
+
+
+    // ==========================================
+    // USE ONE BOMB
+    // ==========================================
 
     public bool ConsumeBomb()
     {
@@ -82,9 +127,11 @@ public class ArtilleryBombInventory : MonoBehaviour
         if (currentBombs <= 0)
         {
             Debug.LogWarning(
-                "[ArtilleryInventory] CANNOT FIRE | No bombs available.",
+                "[ArtilleryInventory] CANNOT FIRE | " +
+                "No bombs available.",
                 this
             );
+
             return false;
         }
 
