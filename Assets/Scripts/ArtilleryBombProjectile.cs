@@ -7,9 +7,9 @@ using UnityEngine;
 public class ArtilleryBombProjectile : MonoBehaviour
 {
     [Header("Explosion")]
-    [SerializeField] private float explosionRadius = 5f;
+    [SerializeField] private float explosionRadius = 20f;
     [SerializeField] private float maximumDamage = 100f;
-    [SerializeField] private float minimumDamage = 25f;
+    [SerializeField] private float minimumDamage = 100f;
     [SerializeField] private LayerMask damageMask = ~0;
 
     [Header("Lifetime")]
