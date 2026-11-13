@@ -155,7 +155,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ArtilleryBombProjectile
   explosionRadius: 15
   maximumDamage: 100
-  minimumDamage: 50
+  minimumDamage: 100
   damageMask:
     serializedVersion: 2
     m_Bits: 4294967295

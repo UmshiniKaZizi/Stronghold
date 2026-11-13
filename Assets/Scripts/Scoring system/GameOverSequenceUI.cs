@@ -593,6 +593,14 @@ public class GameOverSequenceUI : MonoBehaviour
                 "[BUTTON DEBUG ERROR] GameManager.Instance is missing."
             );
         }
+
+        Debug.Log("Exiting Stronghold...");
+
+        Application.Quit();
+
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#endif
     }
 
     private void OnDestroy()

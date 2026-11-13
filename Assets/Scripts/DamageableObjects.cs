@@ -21,34 +21,46 @@ public class DamageableObject : MonoBehaviour
     [Header("Destroyed State")]
     [SerializeField] private GameObject destroyedRubble;
 
+    [Header("Original Object Physics")]
+    [SerializeField] private Rigidbody objectRigidbody;
+
     [Header("Damage Threshold")]
     [Range(0f, 1f)]
     [SerializeField] private float damagedHealthPercent = 0.6f;
 
-    [Header("Main Object Hit Reaction")]
-    [SerializeField] private Rigidbody objectRigidbody;
-    [SerializeField] private float hitForce = 0.7f;
-    [SerializeField] private float hitTorque = 0.5f;
-
     [Header("Damage Piece Physics")]
-    [SerializeField] private float damagePieceForce = 2f;
-    [SerializeField] private float damagePieceUpwardForce = 0.4f;
-    [SerializeField] private float damagePieceTorque = 1.5f;
+    [SerializeField] private float damagePieceForce = 1f;
+    [SerializeField] private float damagePieceUpwardForce = 0.2f;
+    [SerializeField] private float damagePieceTorque = .5f;
 
     [Header("Destroyed Rubble Physics")]
-    [SerializeField] private float rubbleForce = 2f;
-    [SerializeField] private float rubbleUpwardForce = 0.3f;
-    [SerializeField] private float rubbleTorque = 1.5f;
+    [SerializeField] private float rubbleForce = 1f;
+    [SerializeField] private float rubbleUpwardForce = 0.15f;
+    [SerializeField] private float rubbleTorque = 0.5f;
+
+    [Header("Debris Settings")]
+    [SerializeField] private string debrisLayerName = "Debris";
+    [SerializeField] private float debrisLifetime = 10f;
 
     [Header("Temporary Testing")]
-    [SerializeField] private bool enableTestKey = true;
+    [SerializeField] private bool enableTestKey = false;
     [SerializeField] private float testDamage = 25f;
+
+    //[Header("Main Object Hit Reaction")]
+   // [SerializeField] private Rigidbody objectRigidbody;
+    //[SerializeField] private float hitForce = 0.7f;
+   // [SerializeField] private float hitTorque = 0.5f;
+
+ 
 
     private bool damaged;
     private bool destroyed;
 
     private Rigidbody[] damagePieceBodies;
     private Rigidbody[] rubbleBodies;
+
+    private Collider[] originalColliders;
+
 
     private void Awake()
     {
@@ -70,6 +82,40 @@ public class DamageableObject : MonoBehaviour
                 GetComponent<Rigidbody>();
         }
 
+        // Collect original structural colliders.
+        Collider[] allColliders =
+            GetComponentsInChildren<Collider>(true);
+
+        System.Collections.Generic.List<Collider> validColliders =
+            new System.Collections.Generic.List<Collider>();
+
+        foreach (Collider col in allColliders)
+        {
+            if (col == null)
+                continue;
+
+            // Do not include physics debris colliders.
+            if (damagePieces != null &&
+                col.transform.IsChildOf(damagePieces.transform))
+                continue;
+
+            if (destroyedRubble != null &&
+                col.transform.IsChildOf(destroyedRubble.transform))
+                continue;
+
+            validColliders.Add(col);
+        }
+
+        originalColliders = validColliders.ToArray();
+
+        // Keep the main structure stationary.
+        if (objectRigidbody != null)
+        {
+            objectRigidbody.linearVelocity = Vector3.zero;
+            objectRigidbody.angularVelocity = Vector3.zero;
+            objectRigidbody.isKinematic = true;
+        }
+
         // Find the little pieces that fly
         // when the object becomes damaged.
         if (damagePieces != null)
@@ -89,12 +135,19 @@ public class DamageableObject : MonoBehaviour
             FreezePieces(rubbleBodies);
         }
 
+
         // Starting visuals.
         if (normalVisual != null)
-            normalVisual.SetActive(true);
+            normalVisual.SetActive(true); //MIGHT NEED TO CHANGE TO FALSE
 
         if (damagedState != null)
             damagedState.SetActive(false);
+
+        if (damagedVisual != null)
+            damagedVisual.SetActive(false);
+
+        if (damagePieces != null)
+            damagePieces.SetActive(false);
 
         if (destroyedRubble != null)
             destroyedRubble.SetActive(false);
@@ -108,31 +161,42 @@ public class DamageableObject : MonoBehaviour
         // TEMPORARY TEST ONLY.
         // Ignore H while onboarding has paused the game.
         if (!enableTestKey ||
-            Time.timeScale <= 0f ||
-            strongholdObject == null)
-        {
+             Time.timeScale <= 0f ||
+             strongholdObject == null)
             return;
-        }
 
         if (Input.GetKeyDown(KeyCode.H))
         {
             Vector3 hitPoint =
-                transform.position +
-                Vector3.up * 0.5f;
-
-            Vector3 hitDirection =
-                (
-                    transform.right +
-                    transform.forward * 0.2f
-                ).normalized;
+                transform.position + Vector3.up * 0.5f;
 
             strongholdObject.TakeDamage(
                 testDamage,
                 DamageSource.ZombieAttack,
                 hitPoint,
-                hitDirection
+                transform.forward
             );
         }
+
+       // if (Input.GetKeyDown(KeyCode.H))
+       // {
+          //  Vector3 hitPoint =
+          //      transform.position +
+          //      Vector3.up * 0.5f;
+
+           // Vector3 hitDirection =
+           //     (
+           //         transform.right +
+            //        transform.forward * 0.2f
+             //   ).normalized;
+
+           // strongholdObject.TakeDamage(
+           //     testDamage,
+           //     DamageSource.ZombieAttack,
+           //     hitPoint,
+           //     hitDirection
+           // );
+        //}
     }
 
     // Called by StrongholdObject whenever
@@ -151,10 +215,10 @@ public class DamageableObject : MonoBehaviour
         if (source == DamageSource.ZombieBomb)
             return;
 
-        ApplyHitMovement(
-            hitPoint,
-            hitDirection
-        );
+       // ApplyHitMovement(
+          //  hitPoint,
+           // hitDirection
+       // );
 
         float healthPercent =
             currentHealth / maxHealth;
@@ -171,38 +235,39 @@ public class DamageableObject : MonoBehaviour
         }
     }
 
-    private void ApplyHitMovement(
-        Vector3 hitPoint,
-        Vector3 hitDirection)
-    {
-        if (objectRigidbody == null)
-            return;
+    //Commented out o=for diagnostic testing 13November
+  //  private void ApplyHitMovement(
+    //    Vector3 hitPoint,
+     //   Vector3 hitDirection)
+   //{
+      //  if (objectRigidbody == null)
+       //     return;
 
-        Vector3 direction = hitDirection;
+       // Vector3 direction = hitDirection;
 
-        if (direction.sqrMagnitude < 0.001f)
-        {
-            direction = transform.forward;
-        }
+       // if (direction.sqrMagnitude < 0.001f)
+       // {
+       //     direction = transform.forward;
+       // }
 
-        objectRigidbody.AddForceAtPosition(
-            direction.normalized * hitForce,
-            hitPoint,
-            ForceMode.Impulse
-        );
+        //objectRigidbody.AddForceAtPosition(
+         //   direction.normalized * hitForce,
+         //   hitPoint,
+          //  ForceMode.Impulse
+        //);
 
-        Vector3 torque =
-            new Vector3(
-                Random.Range(-1f, 1f),
-                Random.Range(-0.2f, 0.2f),
-                Random.Range(-1f, 1f)
-            );
+       // Vector3 torque =
+       //     new Vector3(
+        //        Random.Range(-1f, 1f),
+        //        Random.Range(-0.2f, 0.2f),
+        //        Random.Range(-1f, 1f)
+        //    );
 
-        objectRigidbody.AddTorque(
-            torque * hitTorque,
-            ForceMode.Impulse
-        );
-    }
+        //objectRigidbody.AddTorque(
+        //    torque * hitTorque,
+        //    ForceMode.Impulse
+       // );
+   // }
 
     private void EnterDamagedState()
     {
@@ -254,9 +319,19 @@ public class DamageableObject : MonoBehaviour
             normalVisual.SetActive(false);
         }
 
+        if (damagedState != null)
+            damagedState.SetActive(false);
+
         if (damagedVisual != null)
         {
             damagedVisual.SetActive(false);
+        }
+
+        // Disable original structural colliders.
+        foreach (Collider col in originalColliders)
+        {
+            if (col != null)
+                col.enabled = false;
         }
 
         if (objectRigidbody != null)
@@ -321,6 +396,10 @@ public class DamageableObject : MonoBehaviour
         if (pieces == null)
             return;
 
+        int debrisLayer =
+           LayerMask.NameToLayer(debrisLayerName);
+
+
         foreach (Rigidbody piece in pieces)
         {
             if (piece == null)
@@ -329,6 +408,15 @@ public class DamageableObject : MonoBehaviour
             // Separate the broken piece
             // from the original object.
             piece.transform.SetParent(null, true);
+
+            // Put debris on its dedicated layer.
+            if (debrisLayer != -1)
+            {
+                SetLayerRecursively(
+                    piece.gameObject,
+                    debrisLayer
+                );
+            }
 
             piece.isKinematic = false;
             piece.useGravity = true;
@@ -341,16 +429,58 @@ public class DamageableObject : MonoBehaviour
 
             piece.WakeUp();
 
-            // Small controlled movement.
-            piece.linearVelocity =
-                new Vector3(
-                    Random.Range(-0.25f, 0.25f),
-                    Random.Range(0.4f, 0.7f),
-                    Random.Range(-0.25f, 0.25f)
-                );
+            // Calculate an outward direction.
+            Vector3 direction =
+                piece.worldCenterOfMass - centre;
 
-            piece.angularVelocity =
-                Random.insideUnitSphere * 0.4f;
+            if (direction.sqrMagnitude < 0.001f)
+                direction = Random.insideUnitSphere;
+
+            direction.Normalize();
+
+            Vector3 finalForce =
+                direction * force +
+                Vector3.up * upwardForce;
+
+            piece.AddForce(
+                finalForce,
+                ForceMode.Impulse
+            );
+
+            piece.AddTorque(
+                Random.insideUnitSphere * torque,
+                ForceMode.Impulse
+            );
+
+            // Remove debris after a short period.
+            Destroy(piece.gameObject, debrisLifetime);
+        }
+
+        // Small controlled movement.
+        //piece.linearVelocity =
+         //       new Vector3(
+         //           Random.Range(-0.25f, 0.25f),
+          //          Random.Range(0.4f, 0.7f),
+          //          Random.Range(-0.25f, 0.25f)
+          //      );
+
+           // piece.angularVelocity =
+            //    Random.insideUnitSphere * 0.4f;
+        //}
+    }
+
+    private void SetLayerRecursively(
+        GameObject obj,
+        int layer)
+    {
+        obj.layer = layer;
+
+        foreach (Transform child in obj.transform)
+        {
+            SetLayerRecursively(
+                child.gameObject,
+                layer
+            );
         }
     }
 
