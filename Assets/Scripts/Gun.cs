@@ -64,6 +64,8 @@ public class Gun : MonoBehaviour
     private int currentAmmo;
     private float nextFireTime;
 
+    private WeaponAudio weaponAudio;
+
     private bool isReloading;
     private bool isFiring;
     private bool isControlled = true;
@@ -74,6 +76,8 @@ public class Gun : MonoBehaviour
     private void Awake()
     {
         currentAmmo = magSize;
+
+        weaponAudio = GetComponent<WeaponAudio>();
 
         originalWeaponRotation = transform.localRotation;
 
@@ -135,6 +139,12 @@ public class Gun : MonoBehaviour
     private void FireShot()
     {
         currentAmmo--;
+
+        // Play the weapon's shooting sound.
+        if (weaponAudio != null)
+        {
+            weaponAudio.PlayShootSound();
+        }
 
         PlayMuzzleFlashes();
         PlayFireAnimation();
