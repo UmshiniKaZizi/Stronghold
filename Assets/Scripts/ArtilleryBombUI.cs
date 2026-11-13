@@ -10,6 +10,9 @@ public class ArtilleryBombUI : MonoBehaviour
     [Header("HUD")]
     [SerializeField] private GameObject hudPanel;
 
+    [Header("Center Bomb Message")]
+    [SerializeField] private GameObject bombAvailableMessage;
+
     [Header("Text")]
     [SerializeField] private TMP_Text bombCountText;
     [SerializeField] private TMP_Text killProgressText;
@@ -21,33 +24,63 @@ public class ArtilleryBombUI : MonoBehaviour
         {
             hudPanel.SetActive(false);
         }
+
+        if (bombAvailableMessage != null)
+        {
+            bombAvailableMessage.SetActive(false);
+        }
     }
 
     private void Update()
     {
-        // Make sure references exist.
         if (artilleryShooting == null ||
-            bombInventory == null ||
-            hudPanel == null)
+            bombInventory == null)
         {
             return;
         }
 
-        // Hide during onboarding or Game Over.
+        // Hide everything during onboarding
+        // or after Game Over.
         if (GameManager.Instance == null ||
             !GameManager.Instance.HasGameStarted ||
             GameManager.Instance.IsGameOver)
         {
-            hudPanel.SetActive(false);
+            if (hudPanel != null)
+                hudPanel.SetActive(false);
+
+            if (bombAvailableMessage != null)
+                bombAvailableMessage.SetActive(false);
+
             return;
         }
 
-        // Only show when the Artillery Gunman
-        // is the character currently controlled.
         bool artilleryIsActive =
             artilleryShooting.IsControlled();
 
-        hudPanel.SetActive(artilleryIsActive);
+        // ==========================================
+        // NORMAL ARTILLERY HUD
+        // ==========================================
+
+        if (hudPanel != null)
+        {
+            hudPanel.SetActive(artilleryIsActive);
+        }
+
+        // ==========================================
+        // CENTER "BOMB AVAILABLE" MESSAGE
+        // ==========================================
+
+        bool shouldShowBombMessage =
+            artilleryIsActive &&
+            bombInventory.HasBomb &&
+            !artilleryShooting.IsInBombMode();
+
+        if (bombAvailableMessage != null)
+        {
+            bombAvailableMessage.SetActive(
+                shouldShowBombMessage
+            );
+        }
 
         if (!artilleryIsActive)
             return;
@@ -98,7 +131,6 @@ public class ArtilleryBombUI : MonoBehaviour
         if (switchPromptText == null)
             return;
 
-        // Bomb mode is currently active.
         if (artilleryShooting.IsInBombMode())
         {
             switchPromptText.text =
@@ -107,7 +139,6 @@ public class ArtilleryBombUI : MonoBehaviour
             return;
         }
 
-        // At least one bomb is ready.
         if (bombInventory.HasBomb)
         {
             switchPromptText.text =
@@ -116,7 +147,6 @@ public class ArtilleryBombUI : MonoBehaviour
             return;
         }
 
-        // No bombs available.
         int killsRemaining =
             bombInventory.KillsRequired -
             bombInventory.KillProgress;
