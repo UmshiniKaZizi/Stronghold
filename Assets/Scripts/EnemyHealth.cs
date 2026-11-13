@@ -22,6 +22,7 @@ public class EnemyHealth : MonoBehaviour
 
     private WaveManager waveManager;
     private EnemyMovement enemyMovement;
+    private ZombieAudio zombieAudio;
 
     public float CurrentHealth => currentHealth;
     public float MaxHealth => maxHealth;
@@ -36,6 +37,7 @@ public class EnemyHealth : MonoBehaviour
     private void Awake()
     {
         enemyMovement = GetComponent<EnemyMovement>();
+        zombieAudio = GetComponent<ZombieAudio>();
 
         if (animator == null)
             animator = GetComponentInChildren<Animator>();
@@ -81,10 +83,29 @@ public class EnemyHealth : MonoBehaviour
         {
             Die();
         }
-        else if (animator != null)
+        else
         {
-            animator.SetTrigger(HitHash);
+            // Play zombie hit sound.
+            if (zombieAudio != null)
+            {
+                zombieAudio.PlayHitSound();
+            }
+
+            // Play hit animation.
+            if (animator != null)
+            {
+                animator.SetTrigger(HitHash);
+            }
         }
+
+       // if (currentHealth <= 0f)
+        //{
+        //    Die();
+      //  }
+       // else if (animator != null)
+      //  {
+       //     animator.SetTrigger(HitHash);
+       // }
     }
 
     private void UpdateHealthBar()
@@ -109,6 +130,12 @@ public class EnemyHealth : MonoBehaviour
             return;
 
         hasDied = true;
+
+        // Play zombie death audio.
+        if (zombieAudio != null)
+        {
+            zombieAudio.PlayDeathSound();
+        }
 
         Debug.Log(name + " DIED");
 
