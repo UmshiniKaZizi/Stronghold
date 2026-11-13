@@ -120,25 +120,28 @@ public class StrongholdState : MonoBehaviour
    
     public Color GetStatusColor()
     {
+
+
         switch (CurrentStatus)
         {
             case StrongholdStatus.Secure:
-                return Color.green;
+                return new Color32(54, 169, 255, 255);
 
             case StrongholdStatus.Threatened:
-                return Color.yellow;
+                return new Color32(255, 199, 38, 255);
 
             case StrongholdStatus.Critical:
-                return new Color(1f, 0.5f, 0f);
+                return new Color32(255, 122, 20, 255);
 
             case StrongholdStatus.Destroyed:
-                return Color.red;
+                return new Color32(230, 31, 41, 255);
 
             default:
-                return Color.white;
+                return new Color32(54, 169, 255, 255);
         }
     }
-
+        
+        
     public void MarkDestroyed()
     {
         if (stronghold != null)

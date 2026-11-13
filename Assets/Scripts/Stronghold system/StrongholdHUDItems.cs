@@ -37,6 +37,23 @@ public class StrongholdHUDItems : MonoBehaviour
         RefreshSoldierStatus();
     }
 
+    private void LateUpdate()
+    {
+        if (stateAccent == null)
+            return;
+
+        if (boundSystem != null &&
+            boundSystem.Tier == StrongholdTier.Secure &&
+            stateAccent.color != new Color32(54, 169, 255, 255))
+        {
+            Debug.LogWarning(
+                "HUD ACCENT CHANGED AFTER REFRESH: " +
+                stateAccent.color,
+                stateAccent
+            );
+        }
+    }
+
     public void Bind(Stronghold system)
     {
         if (system == null) 
@@ -100,23 +117,30 @@ public class StrongholdHUDItems : MonoBehaviour
 
         switch (system.Tier)
         {
+            
+
+            case StrongholdTier.Secure:
+                integrityColor = new Color32(54, 169, 255, 255);
+                integrityLabel = "SECURE";
+                break;
+
             case StrongholdTier.Damaged:
-                integrityColor = new Color(1f, 0.78f, 0.15f);
+                integrityColor = new Color32(255, 199, 38, 255);
                 integrityLabel = "THREATENED";
                 break;
 
             case StrongholdTier.Critical:
-                integrityColor = new Color(1f, 0.48f, 0.08f);
+                integrityColor = new Color32(255, 122, 20, 255);
                 integrityLabel = "CRITICAL";
                 break;
 
             case StrongholdTier.Destroyed:
-                integrityColor = new Color(0.9f, 0.12f, 0.16f);
+                integrityColor = new Color32(230, 31, 41, 255);
                 integrityLabel = "DESTROYED";
                 break;
 
             default:
-                integrityColor = new Color(0.1f, 0.48f, 0.95f);
+                integrityColor = new Color32(54, 169, 255, 255);
                 integrityLabel = "SECURE";
                 break;
         }
@@ -144,6 +168,14 @@ public class StrongholdHUDItems : MonoBehaviour
 
             objectFill.color = integrityColor;
         }
+
+        Debug.Log(
+          system.DisplayName +
+           " | Tier: " + system.Tier +
+           " | Integrity colour: " + integrityColor +
+           " | Accent colour: " + stateAccent.color,
+            this
+        );
     }
 
     // ==========================================
