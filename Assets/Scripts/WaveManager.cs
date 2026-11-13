@@ -25,6 +25,9 @@ public class WaveManager : MonoBehaviour
     [Header("Artillery Rewards")]
     [SerializeField] private ArtilleryBombInventory artilleryBombInventory;
 
+    [Header("Audio")]
+    [SerializeField] private GameplayAudio gameplayAudio;
+
     private int currentWave;
     private int enemiesRemaining;
 
@@ -127,6 +130,11 @@ public class WaveManager : MonoBehaviour
             waveMessageUI.ShowWaveIncoming();
         }
 
+        if (gameplayAudio != null)
+        {
+            gameplayAudio.PlayWaveIncoming();
+        }
+
         enemySpawner.SpawnWave(enemyCount);
 
         while (!spawningFinished)
@@ -153,6 +161,11 @@ public class WaveManager : MonoBehaviour
         if (waveMessageUI != null)
         {
             waveMessageUI.ShowWaveComplete();
+        }
+
+        if (gameplayAudio != null)
+        {
+            gameplayAudio.PlayWaveComplete();
         }
     }
 
